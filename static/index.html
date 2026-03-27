@@ -91,6 +91,7 @@
     }
     .badge-approved { background: #14532d; color: #4ade80; }
     .badge-rejected { background: #7f1d1d; color: #f87171; }
+    .badge-pending  { background: #1e3a5f; color: #93c5fd; }
 
     .summary-box {
       background: #0f1117;
@@ -250,15 +251,16 @@
     } else {
       container.innerHTML = `
         <table>
-          <thead><tr><th>Ticker</th><th>Side</th><th>Qty</th><th>Price (₹)</th><th>Total (₹)</th></tr></thead>
+          <thead><tr><th>Trade ID</th><th>Ticker</th><th>Side</th><th>Qty</th><th>Proposed Price (₹)</th><th>Status</th></tr></thead>
           <tbody>
             ${trades.map(t => `
               <tr>
+                <td><code>#${t.trade_id}</code></td>
                 <td>${t.ticker}</td>
                 <td class="${t.side.toUpperCase() === 'BUY' ? 'side-buy' : 'side-sell'}">${t.side.toUpperCase()}</td>
                 <td>${t.qty}</td>
-                <td>${Number(t.price).toLocaleString('en-IN')}</td>
-                <td>${(t.qty * t.price).toLocaleString('en-IN')}</td>
+                <td>${t.proposed_price ? Number(t.proposed_price).toLocaleString('en-IN') : '—'}</td>
+                <td><span class="badge badge-pending">PENDING</span></td>
               </tr>`).join('')}
           </tbody>
         </table>`;
@@ -301,7 +303,9 @@
         execDiv.textContent = data.message;
       } else {
         const portfolio = data.updated_portfolio;
-        const tradeLines = (data.trade_results || []).map(r => `• ${r.result}`).join('\n');
+        const tradeLines = (data.trade_results || []).map(r =>
+          `• Trade #${r.trade_id} — ${r.side} ${r.qty}x ${r.ticker} @ ₹${Number(r.executed_price).toLocaleString('en-IN')} = ₹${Number(r.total_value).toLocaleString('en-IN')} [${r.status}]`
+        ).join('\n');
         execDiv.className = 'success';
         execDiv.textContent =
           `Trades executed successfully!\n\n${tradeLines}\n\n` +

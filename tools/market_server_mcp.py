@@ -1,44 +1,94 @@
-from mcp.server.fastmcp import FastMCP
+"""
+MCP server — runs as a subprocess.
+Tools: get_portfolio, get_live_price (yfinance), record_trade (DB + idempotency).
+"""
+import sys
+import os
 import json
+
+# Ensure project root is on sys.path so db.* imports work
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from mcp.server.fastmcp import FastMCP
+import yfinance as yf
+
+from db.engine import SessionLocal
+import db.crud as crud
 
 mcp = FastMCP("WallStreetEngine")
 
-# State-persistent "Database"
-DB = {
-    "holdings": {"HDFC": 100, "RELIANCE": 5000, "TCS": 20},
-    "cash": 500000.0,
-    "trade_history": []
+# Map short tickers → Yahoo Finance NSE symbols
+_NSE_MAP = {
+    "HDFC":       "HDFCBANK.NS",
+    "RELIANCE":   "RELIANCE.NS",
+    "TCS":        "TCS.NS",
+    "INFY":       "INFY.NS",
+    "WIPRO":      "WIPRO.NS",
+    "BAJFINANCE": "BAJFINANCE.NS",
+    "ICICIBANK":  "ICICIBANK.NS",
+    "SBIN":       "SBIN.NS",
 }
 
-@mcp.tool()
-def get_portfolio() -> str:
-    """Returns the current stock holdings and cash balance."""
-    print("DEBUG: get_portfolio received request!")
-    return json.dumps(DB)
+# Fallback prices used when yfinance is unavailable / market is closed
+_FALLBACK_PRICES = {
+    "HDFC": 165_000.0,
+    "RELIANCE": 2_900.0,
+    "TCS": 3_800.0,
+    "INFY": 1_600.0,
+}
 
-@mcp.tool()
-def get_live_price(ticker: str) -> float:
-    """Fetches real-time price for Indian stocks (Simulated)."""
-    prices = {"HDFC": 165000.0, "RELIANCE": 290.0, "TCS": 3800.0}
-    print("DEBUG: get_live_price received request!")
-    return prices.get(ticker.upper(), 1200.0)
 
+# ── Tool 1: get_portfolio ─────────────────────────────────────────────────────
 @mcp.tool()
-def record_trade(ticker: str, side: str, qty: int, price: float) -> str:
-    """Executes and logs a trade. Updates portfolio state."""
-    total = qty * price
-    if side.upper() == "BUY" and DB["cash"] < total:
-        return "ERROR: Insufficient funds."
-    
-    if side.upper() == "BUY":
-        DB["cash"] -= total
-        DB["holdings"][ticker] = DB["holdings"].get(ticker, 0) + qty
-    else:
-        DB["cash"] += total
-        DB["holdings"][ticker] = DB["holdings"].get(ticker, 0) - qty
-        
-    DB["trade_history"].append({"ticker": ticker, "side": side, "qty": qty})
-    return f"SUCCESS: {side} {qty} {ticker} at {price}. Current Cash: {DB['cash']}"
+def get_portfolio(user_id: str) -> str:
+    """Returns the current stock holdings and cash balance for a user from the database."""
+    print(f"[MCP] get_portfolio user_id={user_id}")
+    db = SessionLocal()
+    try:
+        portfolio = crud.get_portfolio(db, user_id)
+    finally:
+        db.close()
+    return json.dumps(portfolio)
+
+
+# ── Tool 2: get_live_price ────────────────────────────────────────────────────
+@mcp.tool()
+def get_live_price(ticker: str, user_id: str = "") -> float:
+    """
+    Fetches the real-time market price for a stock ticker from NSE via Yahoo Finance.
+    user_id is accepted for uniform tool signature but not used for price lookup.
+    """
+    upper = ticker.upper()
+    yf_symbol = _NSE_MAP.get(upper, upper + ".NS")
+    print(f"[MCP] get_live_price ticker={ticker} → {yf_symbol}")
+    try:
+        stock = yf.Ticker(yf_symbol)
+        price = stock.fast_info.last_price
+        if price and price > 0:
+            return round(float(price), 2)
+    except Exception as e:
+        print(f"[MCP] yfinance error for {yf_symbol}: {e}")
+
+    fallback = _FALLBACK_PRICES.get(upper, 1200.0)
+    print(f"[MCP] Using fallback price for {ticker}: {fallback}")
+    return fallback
+
+
+# ── Tool 3: record_trade ──────────────────────────────────────────────────────
+@mcp.tool()
+def record_trade(user_id: str, session_id: str, ticker: str, side: str, qty: int, price: float) -> str:
+    """
+    Executes and records a trade in the database. Updates the user portfolio.
+    Idempotent: calling twice with the same (session_id, ticker, side) is safe.
+    """
+    print(f"[MCP] record_trade user={user_id} session={session_id} {side} {qty}x{ticker}@{price}")
+    db = SessionLocal()
+    try:
+        result = crud.record_trade(db, session_id, user_id, ticker, side, qty, price)
+    finally:
+        db.close()
+    return json.dumps(result)
+
 
 if __name__ == "__main__":
     mcp.run()
