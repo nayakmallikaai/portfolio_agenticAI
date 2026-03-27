@@ -7,4 +7,4 @@ mcp
 langgraph
 langchain-ollama
 langchain-core
-
+fastapi

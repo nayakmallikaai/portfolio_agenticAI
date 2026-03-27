@@ -4,7 +4,12 @@
       "Bash(python -c \"import langgraph\")",
       "Bash(python -c \"import langchain_ollama\")",
       "Bash(python -c \"import langchain_core\")",
-      "Bash(python -c \"import main_langgraph\")"
+      "Bash(python -c \"import main_langgraph\")",
+      "Bash(source .venv/bin/activate)",
+      "Bash(pip show:*)",
+      "Bash(source /Users/mallikanayak/AI_WORK/portfolio_agenticAI/.venv/bin/activate)",
+      "Bash(pip install:*)",
+      "Bash(pip list:*)"
     ]
   }
 }

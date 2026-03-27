@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portfolio Agent</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 16px;
+    }
+
+    h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: 4px; }
+    .subtitle { font-size: 0.85rem; color: #64748b; margin-bottom: 32px; }
+
+    .card {
+      background: #1e2130;
+      border: 1px solid #2d3348;
+      border-radius: 12px;
+      padding: 28px;
+      width: 100%;
+      max-width: 680px;
+      margin-bottom: 20px;
+    }
+
+    .card h2 { font-size: 0.95rem; font-weight: 600; color: #94a3b8; margin-bottom: 18px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    label { display: block; font-size: 0.82rem; color: #94a3b8; margin-bottom: 6px; margin-top: 14px; }
+    label:first-of-type { margin-top: 0; }
+
+    input, textarea {
+      width: 100%;
+      background: #0f1117;
+      border: 1px solid #2d3348;
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-size: 0.9rem;
+      padding: 10px 12px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    input:focus, textarea:focus { border-color: #6366f1; }
+    textarea { resize: vertical; min-height: 80px; font-family: inherit; }
+
+    .row { display: flex; gap: 10px; align-items: flex-end; }
+    .row input { flex: 1; }
+
+    button {
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 10px 20px;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    button:active { transform: scale(0.97); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-primary { background: #6366f1; color: #fff; width: 100%; margin-top: 18px; padding: 12px; }
+    .btn-generate { background: #2d3348; color: #94a3b8; font-size: 0.8rem; white-space: nowrap; padding: 10px 14px; }
+    .btn-approve { background: #16a34a; color: #fff; flex: 1; padding: 12px; }
+    .btn-reject  { background: #dc2626; color: #fff; flex: 1; padding: 12px; }
+
+    .spinner {
+      display: none;
+      text-align: center;
+      color: #6366f1;
+      font-size: 0.9rem;
+      padding: 12px 0;
+    }
+    .spinner.visible { display: block; }
+
+    #results { display: none; }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 999px;
+      margin-left: 8px;
+    }
+    .badge-approved { background: #14532d; color: #4ade80; }
+    .badge-rejected { background: #7f1d1d; color: #f87171; }
+
+    .summary-box {
+      background: #0f1117;
+      border: 1px solid #2d3348;
+      border-radius: 8px;
+      padding: 14px;
+      font-size: 0.88rem;
+      line-height: 1.65;
+      white-space: pre-wrap;
+      margin-top: 10px;
+      max-height: 260px;
+      overflow-y: auto;
+    }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 10px; }
+    th { text-align: left; color: #64748b; font-weight: 600; padding: 8px 10px; border-bottom: 1px solid #2d3348; }
+    td { padding: 8px 10px; border-bottom: 1px solid #1a1f2e; }
+    tr:last-child td { border-bottom: none; }
+    .side-buy  { color: #4ade80; font-weight: 600; }
+    .side-sell { color: #f87171; font-weight: 600; }
+
+    .no-trades { color: #64748b; font-size: 0.85rem; padding: 10px 0; }
+
+    .action-row { display: flex; gap: 12px; margin-top: 4px; }
+
+    #exec-result {
+      display: none;
+      margin-top: 16px;
+      padding: 14px;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      line-height: 1.6;
+    }
+    #exec-result.success { background: #14532d33; border: 1px solid #16a34a55; color: #4ade80; }
+    #exec-result.rejected { background: #7f1d1d33; border: 1px solid #dc262655; color: #f87171; }
+    #exec-result.error { background: #78350f33; border: 1px solid #d9770655; color: #fbbf24; }
+
+    .meta { font-size: 0.78rem; color: #475569; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+  <h1>Portfolio Agent</h1>
+  <p class="subtitle">Multi-agent analysis with manual approval gate</p>
+
+  <!-- ── Input form ─────────────────────────────────────────────────── -->
+  <div class="card">
+    <h2>New Analysis</h2>
+
+    <label>User ID</label>
+    <input id="userId" type="text" placeholder="e.g. mallika_01" />
+
+    <label>Session ID</label>
+    <div class="row">
+      <input id="sessionId" type="text" placeholder="Auto-generated or enter manually" />
+      <button class="btn-generate" onclick="generateSession()">Generate</button>
+    </div>
+
+    <label>Goal</label>
+    <textarea id="goal" placeholder="e.g. Check my holdings and prices, then tell me which stock to trim to reduce concentration risk."></textarea>
+
+    <button class="btn-primary" id="analyzeBtn" onclick="runAnalysis()">Run Analysis</button>
+    <div class="spinner" id="spinner">Agents are thinking… this may take 30–60 seconds</div>
+  </div>
+
+  <!-- ── Results ────────────────────────────────────────────────────── -->
+  <div class="card" id="results">
+    <h2>
+      Decision Summary
+      <span class="badge" id="riskBadge"></span>
+    </h2>
+
+    <div class="summary-box" id="summaryBox"></div>
+    <p class="meta" id="retryMeta"></p>
+
+    <label style="margin-top:20px;">Proposed Trades</label>
+    <div id="tradesContainer"></div>
+
+    <div class="action-row" style="margin-top:20px;">
+      <button class="btn-approve" id="approveBtn" onclick="executeDecision(true)">Approve &amp; Execute</button>
+      <button class="btn-reject"  id="rejectBtn"  onclick="executeDecision(false)">Reject</button>
+    </div>
+
+    <div id="exec-result"></div>
+  </div>
+
+<script>
+  function generateSession() {
+    const id = 'sess_' + Math.random().toString(36).slice(2, 10);
+    document.getElementById('sessionId').value = id;
+  }
+
+  // Auto-generate on load
+  generateSession();
+
+  async function runAnalysis() {
+    const userId    = document.getElementById('userId').value.trim();
+    const sessionId = document.getElementById('sessionId').value.trim();
+    const goal      = document.getElementById('goal').value.trim();
+
+    if (!userId || !sessionId || !goal) {
+      alert('Please fill in User ID, Session ID, and Goal.');
+      return;
+    }
+
+    // Reset UI
+    document.getElementById('results').style.display = 'none';
+    document.getElementById('exec-result').style.display = 'none';
+    document.getElementById('analyzeBtn').disabled = true;
+    document.getElementById('spinner').classList.add('visible');
+
+    try {
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, session_id: sessionId, goal }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || 'Analysis failed');
+      }
+
+      const data = await res.json();
+      renderResults(data);
+    } catch (e) {
+      alert('Error: ' + e.message);
+    } finally {
+      document.getElementById('analyzeBtn').disabled = false;
+      document.getElementById('spinner').classList.remove('visible');
+    }
+  }
+
+  function renderResults(data) {
+    // Summary
+    document.getElementById('summaryBox').textContent = data.decision_summary || '(no summary)';
+
+    // Risk badge
+    const badge = document.getElementById('riskBadge');
+    if (data.risk_approved) {
+      badge.textContent = 'APPROVED';
+      badge.className = 'badge badge-approved';
+    } else {
+      badge.textContent = 'REJECTED';
+      badge.className = 'badge badge-rejected';
+    }
+
+    // Retry count
+    document.getElementById('retryMeta').textContent =
+      `Risk retries used: ${data.retry_count} / 3`;
+
+    // Trades table
+    const container = document.getElementById('tradesContainer');
+    const trades = data.proposed_trades || [];
+    if (trades.length === 0) {
+      container.innerHTML = '<p class="no-trades">No structured trades parsed. Manual review required before executing.</p>';
+    } else {
+      container.innerHTML = `
+        <table>
+          <thead><tr><th>Ticker</th><th>Side</th><th>Qty</th><th>Price (₹)</th><th>Total (₹)</th></tr></thead>
+          <tbody>
+            ${trades.map(t => `
+              <tr>
+                <td>${t.ticker}</td>
+                <td class="${t.side.toUpperCase() === 'BUY' ? 'side-buy' : 'side-sell'}">${t.side.toUpperCase()}</td>
+                <td>${t.qty}</td>
+                <td>${Number(t.price).toLocaleString('en-IN')}</td>
+                <td>${(t.qty * t.price).toLocaleString('en-IN')}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>`;
+    }
+
+    document.getElementById('results').style.display = 'block';
+    document.getElementById('approveBtn').disabled = false;
+    document.getElementById('rejectBtn').disabled = false;
+  }
+
+  async function executeDecision(approved) {
+    const userId    = document.getElementById('userId').value.trim();
+    const sessionId = document.getElementById('sessionId').value.trim();
+
+    document.getElementById('approveBtn').disabled = true;
+    document.getElementById('rejectBtn').disabled = true;
+
+    const execDiv = document.getElementById('exec-result');
+    execDiv.style.display = 'block';
+    execDiv.className = '';
+    execDiv.textContent = approved ? 'Executing trades…' : 'Sending rejection…';
+
+    try {
+      const res = await fetch('/api/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, session_id: sessionId, approved }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        execDiv.className = 'error';
+        execDiv.textContent = 'Error: ' + (data.detail || 'Unknown error');
+        return;
+      }
+
+      if (data.status === 'rejected') {
+        execDiv.className = 'rejected';
+        execDiv.textContent = data.message;
+      } else {
+        const portfolio = data.updated_portfolio;
+        const tradeLines = (data.trade_results || []).map(r => `• ${r.result}`).join('\n');
+        execDiv.className = 'success';
+        execDiv.textContent =
+          `Trades executed successfully!\n\n${tradeLines}\n\n` +
+          `Updated Portfolio:\n` +
+          `  Cash: ₹${Number(portfolio.cash).toLocaleString('en-IN')}\n` +
+          `  Holdings: ${JSON.stringify(portfolio.holdings, null, 2)}`;
+      }
+    } catch (e) {
+      execDiv.className = 'error';
+      execDiv.textContent = 'Error: ' + e.message;
+    }
+  }
+</script>
+</body>
+</html>
