@@ -1,0 +1,10 @@
+anthropic
+openai
+pydantic
+yfinance
+python-dotenv
+mcp
+langgraph
+langchain-ollama
+langchain-core
+

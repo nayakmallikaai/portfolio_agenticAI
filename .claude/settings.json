@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import langgraph\")",
+      "Bash(python -c \"import langchain_ollama\")",
+      "Bash(python -c \"import langchain_core\")",
+      "Bash(python -c \"import main_langgraph\")"
+    ]
+  }
+}
