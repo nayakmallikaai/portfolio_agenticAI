@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from mcp.client.stdio import stdio_client
 from mcp import ClientSession, StdioServerParameters
 
-from db.engine import engine
+from db.engine import engine, migrate_db
 from db.models import Base
 from api.routes import router, set_mcp_holder
 
@@ -18,8 +18,9 @@ server_params = StdioServerParameters(command="python", args=["tools/market_serv
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    # Create all DB tables on startup (idempotent)
+    # Create all DB tables on startup (idempotent), then run incremental migrations
     Base.metadata.create_all(bind=engine)
+    migrate_db()
 
     async with stdio_client(server_params) as (read, write):
         async with ClientSession(read, write) as session:

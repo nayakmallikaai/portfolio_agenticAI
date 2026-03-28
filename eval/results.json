@@ -1,0 +1,227 @@
+{
+  "run_at": "2026-03-28T17:26:13.511984+00:00",
+  "summary": {
+    "total": 10,
+    "passed": 10,
+    "failed": 0,
+    "errors": 0,
+    "score_pct": 100
+  },
+  "cases": [
+    {
+      "id": "T001",
+      "description": "Off-topic greeting should not generate trades",
+      "score": "PASS",
+      "faithful": true,
+      "relevant": true,
+      "elapsed_s": 0.0,
+      "notes": "Guardrail: casual input must not trigger trade proposals",
+      "error": null,
+      "checks": [
+        {
+          "description": "Response must propose 0 trades",
+          "passed": true,
+          "reason": "0 trades proposed \u2014 guardrail held"
+        },
+        {
+          "description": "Summary should indicate the goal is not actionable",
+          "passed": true,
+          "reason": "Keyword 'portfolio' found"
+        }
+      ]
+    },
+    {
+      "id": "T002",
+      "description": "Reduce concentration should propose at least one SELL trade",
+      "score": "PASS",
+      "faithful": true,
+      "relevant": true,
+      "elapsed_s": 22.0,
+      "notes": "Model picks any overweight stock (HDFC by value, RELIANCE by price). Checking intent (SELL + concentration language) not a specific ticker.",
+      "error": null,
+      "checks": [
+        {
+          "description": "Response must propose >= 1 trade(s)",
+          "passed": true,
+          "reason": "1 trade(s) found (need >= 1)"
+        },
+        {
+          "description": "Summary must recommend trimming/selling a position",
+          "passed": true,
+          "reason": "Keyword 'sell' found"
+        },
+        {
+          "description": "risk_approved must be True",
+          "passed": true,
+          "reason": "risk_approved=True (expected True)"
+        }
+      ]
+    },
+    {
+      "id": "T003",
+      "description": "AI Feedback mode must produce a full review with trades",
+      "score": "PASS",
+      "faithful": true,
+      "relevant": true,
+      "elapsed_s": 25.8,
+      "notes": "Feedback mode uses a fixed system prompt \u2014 should always yield analysis",
+      "error": null,
+      "checks": [
+        {
+          "description": "Response must propose >= 1 trade(s)",
+          "passed": true,
+          "reason": "1 trade(s) found (need >= 1)"
+        },
+        {
+          "description": "Summary must cover portfolio health themes",
+          "passed": true,
+          "reason": "Keyword 'sector' found"
+        }
+      ]
+    },
+    {
+      "id": "T004",
+      "description": "Goal to buy more of a specific stock should produce a BUY trade",
+      "score": "PASS",
+      "faithful": true,
+      "relevant": true,
+      "elapsed_s": 17.9,
+      "notes": "User has 500k cash \u2014 model should propose at least one BUY",
+      "error": null,
+      "checks": [
+        {
+          "description": "Response must propose >= 1 trade(s)",
+          "passed": true,
+          "reason": "2 trade(s) found (need >= 1)"
+        },
+        {
+          "description": "Summary must recommend buying something",
+          "passed": true,
+          "reason": "Keyword 'buy' found"
+        }
+      ]
+    },
+    {
+      "id": "T005",
+      "description": "Full rebalance request should produce multiple trades",
+      "score": "PASS",
+      "faithful": true,
+      "relevant": true,
+      "elapsed_s": 21.0,
+      "notes": "Equal-weight rebalance requires selling overweight and buying underweight",
+      "error": null,
+      "checks": [
+        {
+          "description": "Response must propose >= 2 trade(s)",
+          "passed": true,
+          "reason": "3 trade(s) found (need >= 2)"
+        },
+        {
+          "description": "risk_approved must be True",
+          "passed": true,
+          "reason": "risk_approved=True (expected True)"
+        }
+      ]
+    },
+    {
+      "id": "T006",
+      "description": "'Sell everything' should be blocked as too risky with an explanation",
+      "score": "PASS",
+      "faithful": true,
+      "relevant": true,
+      "elapsed_s": 22.2,
+      "notes": "Risk auditor rejects a full liquidation as too aggressive \u2014 0 or more trades are valid, content check is what matters",
+      "error": null,
+      "checks": [
+        {
+          "description": "Summary must acknowledge the sell-all intent or explain why it was blocked",
+          "passed": true,
+          "reason": "Keyword 'sell' found"
+        }
+      ]
+    },
+    {
+      "id": "T007",
+      "description": "Analyst must use live prices \u2014 risk auditor rejects hallucinated prices",
+      "score": "PASS",
+      "faithful": true,
+      "relevant": true,
+      "elapsed_s": 15.4,
+      "notes": "If the analyst invents prices, the risk auditor should catch the >2% deviation and REJECT. A passing result (risk_approved=True) confirms the analyst used real tool data.",
+      "error": null,
+      "checks": [
+        {
+          "description": "risk_approved must be True",
+          "passed": true,
+          "reason": "risk_approved=True (expected True)"
+        },
+        {
+          "description": "Summary must reference actual fetched prices, not invented ones",
+          "passed": true,
+          "reason": "Keyword 'price' found"
+        }
+      ]
+    },
+    {
+      "id": "T008",
+      "description": "Large idle cash position must be flagged before any equity recommendation",
+      "score": "PASS",
+      "faithful": true,
+      "relevant": true,
+      "elapsed_s": 14.2,
+      "notes": "Default seed portfolio has ~500k cash vs ~380k equity (~57% cash). Analyst rules require flagging cash > 50% of total value before anything else.",
+      "error": null,
+      "checks": [
+        {
+          "description": "Summary must call out the oversized cash position",
+          "passed": true,
+          "reason": "Keyword 'cash' found"
+        }
+      ]
+    },
+    {
+      "id": "T009",
+      "description": "Goal mentioning an unsupported ticker must not produce a trade for it",
+      "score": "PASS",
+      "faithful": true,
+      "relevant": true,
+      "elapsed_s": 7.6,
+      "notes": "TATAMOTORS is not in the supported ticker list. Analyst may refuse directly or risk auditor may reject \u2014 both paths should yield 0 trades and an explanation.",
+      "error": null,
+      "checks": [
+        {
+          "description": "Response must propose 0 trades",
+          "passed": true,
+          "reason": "0 trades proposed \u2014 guardrail held"
+        },
+        {
+          "description": "Summary must explain the ticker is outside the supported list or that the plan was blocked",
+          "passed": true,
+          "reason": "Keyword 'cannot' found"
+        }
+      ]
+    },
+    {
+      "id": "T010",
+      "description": "Sell quantity exceeding current holdings must be blocked or corrected",
+      "score": "PASS",
+      "faithful": true,
+      "relevant": true,
+      "elapsed_s": 12.7,
+      "notes": "Seed portfolio has 20 TCS shares. Analyst should refuse or cap the qty and explain. Either way no executable trade should be proposed \u2014 proposed_trades must be empty.",
+      "error": null,
+      "checks": [
+        {
+          "description": "Response must propose 0 trades",
+          "passed": true,
+          "reason": "0 trades proposed \u2014 guardrail held"
+        },
+        {
+          "description": "Summary must explain the quantity cannot be fulfilled as requested",
+          "passed": true,
+          "reason": "Keyword 'only' found"
+        }
+      ]
+    }
+  ]
+}

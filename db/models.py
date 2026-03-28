@@ -36,6 +36,7 @@ class AnalysisSession(Base):
 
     session_id:       Mapped[str]  = mapped_column(String, primary_key=True)
     user_id:          Mapped[str]  = mapped_column(String, ForeignKey("users.user_id"), nullable=False, index=True)
+    mode:             Mapped[str]  = mapped_column(String(10), nullable=False, default="goal")  # "goal" | "feedback"
     goal:             Mapped[str]  = mapped_column(Text, nullable=False)
     decision_summary: Mapped[str]  = mapped_column(Text, nullable=True)
     risk_approved:    Mapped[bool] = mapped_column(Boolean, default=False)

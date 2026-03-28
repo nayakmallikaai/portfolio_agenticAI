@@ -1,69 +1,51 @@
-# Portfolio Agent — Agentic AI Trading System
+# Portfolio Agent
 
-A multi-agent portfolio management system built with **LangGraph**, **FastAPI**, **MCP (Model Context Protocol)**, and **PostgreSQL**. An LLM-powered analyst proposes trades, a risk auditor reviews them, and a human approves or rejects before anything touches the portfolio.
+A multi-agent AI system for Indian equity portfolio management. An LLM analyst proposes trades, a risk auditor reviews them, and a human approves or rejects before anything touches the portfolio.
+
+---
+
+## What It Does
+
+- Fetches live NSE prices via yfinance (falls back to previous close when market is closed)
+- Analyst (Claude Sonnet) calls MCP tools to read the portfolio, then proposes trades grounded in real data
+- Risk auditor (Claude Haiku) enforces hard rules — rejects aggressive, oversized, or data-unsupported plans
+- Human-in-the-loop: proposed trades are shown in the UI before any execution
+- All sessions, trades, and portfolio state persisted in PostgreSQL
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Browser (UI)                         │
-│          http://localhost:8000                          │
-└────────────────────┬────────────────────────────────────┘
-                     │ HTTP
-┌────────────────────▼────────────────────────────────────┐
-│                FastAPI (main.py)                        │
-│   POST /api/analyze       POST /api/execute             │
-│   api/routes.py           api/routes.py                 │
-└──────────┬──────────────────────────┬───────────────────┘
-           │ run_analysis()           │ call_tool()
-┌──────────▼──────────┐   ┌──────────▼──────────────────┐
-│  LangGraph Agent    │   │  MCP Server (subprocess)    │
-│  agent/graph.py     │   │  tools/market_server_mcp.py │
-│                     │   │                             │
-│  ┌─────────────┐    │   │  get_portfolio(user_id)     │
-│  │  Analyst    │◄───┼───┤  get_live_price(ticker)     │
-│  │  (llama3.1) │    │   │  record_trade(...)          │
-│  └──────┬──────┘    │   └──────────────┬──────────────┘
-│         │           │                  │
-│  ┌──────▼──────┐    │   ┌──────────────▼──────────────┐
-│  │ Risk Auditor│    │   │     PostgreSQL (Docker)     │
-│  │ (llama3.1)  │    │   │                             │
-│  └──────┬──────┘    │   │  users                      │
-│         │           │   │  portfolios                 │
-│      retry          │   │  analysis_sessions          │
-│      (max 3)        │   │  trade_history              │
-└─────────────────────┘   └─────────────────────────────┘
+Browser (http://localhost:8000)
+        │
+        ▼
+FastAPI (main.py)
+   ├── POST /api/analyze  ──► LangGraph Agent (agent/graph.py)
+   │                              ├── Analyst Node  (claude-sonnet-4-6)
+   │                              │     └── calls MCP tools
+   │                              ├── Tool Node
+   │                              │     └── get_portfolio / get_live_price
+   │                              └── Risk Auditor  (claude-haiku-4-5)
+   │                                    └── APPROVED / REJECTED (max 3 retries)
+   │
+   ├── POST /api/execute  ──► MCP record_trade ──► PostgreSQL
+   └── GET  /api/portfolio/{user_id}
 ```
-
-### Agent Flow
 
 ```
 User Goal
-    │
-    ▼
-[Analyst Node] ──── calls get_portfolio, get_live_price via MCP
-    │
-  tool calls? ──yes──► [Tool Node] ──► back to Analyst
-    │ no
-    ▼
-[Risk Auditor] ──── reviews proposed plan
-    │
-  APPROVED ──────────────────────────────► END
-    │                                        │
-  REJECTED + retries < 3                     │
-    │                                    proposed trades
-  feedback injected ──► back to Analyst  saved to DB
-                                             │
-                                         User sees UI
-                                             │
-                                      Approve / Reject
-                                             │
-                                  /api/execute fetches live price
-                                             │
-                                  record_trade updates portfolio
+  │
+  ▼
+[Analyst] ──tool calls──► [Tool Node] ──► back to Analyst
+  │ no tools needed
+  ▼
+[Risk Auditor]
+  ├── APPROVED ──► trades saved ──► User approves/rejects in UI ──► /api/execute
+  └── REJECTED ──► feedback injected ──► Analyst retries (max 3)
 ```
+
+MCP server runs as a **subprocess** communicating over stdin/stdout. `record_trade` is hidden from the LLM — it can only be called via explicit user approval through `/api/execute`.
 
 ---
 
@@ -71,210 +53,55 @@ User Goal
 
 ```
 portfolio_agenticAI/
-│
-├── main.py                     # FastAPI app, lifespan, DB init, MCP session
-│
+├── main.py                     # FastAPI app, lifespan, MCP session init
 ├── agent/
-│   ├── graph.py                # LangGraph workflow — analyst + risk + routing
-│   └── parsing.py              # Regex + LLM fallback trade extraction
-│
+│   ├── graph.py                # LangGraph workflow: analyst + tools + risk + routing
+│   └── parsing.py              # Regex + Claude fallback for JSON trade extraction
 ├── api/
-│   ├── routes.py               # /api/analyze and /api/execute handlers
+│   ├── routes.py               # /api/analyze, /api/execute, /api/portfolio handlers
 │   └── schemas.py              # Pydantic request models
-│
 ├── db/
-│   ├── engine.py               # SQLAlchemy engine + SessionLocal
-│   ├── models.py               # ORM models: User, Portfolio, AnalysisSession, TradeHistory
+│   ├── engine.py               # SQLAlchemy engine, SessionLocal, migrations
+│   ├── models.py               # ORM: User, Portfolio, AnalysisSession, TradeHistory
 │   └── crud.py                 # All DB operations (idempotent)
-│
 ├── tools/
-│   └── market_server_mcp.py    # MCP server — runs as subprocess, 3 tools
-│
+│   └── market_server_mcp.py    # MCP server — get_portfolio, get_live_price, record_trade
+├── eval/
+│   ├── test_cases.py           # 10 test cases with typed check primitives
+│   ├── evaluator.py            # Check runner and result types
+│   └── run_eval.py             # CLI: colored report + JSON export
 ├── static/
 │   └── index.html              # Browser UI
-│
 ├── docker-compose.yml          # PostgreSQL container
 ├── requirements.txt
-└── .env                        # API keys and config (git ignored)
+└── .env                        # API keys and DB config (git-ignored)
 ```
 
 ---
 
-## Database Schema
+## Supported Tickers
 
-### `users`
-| Column | Type | Description |
-|---|---|---|
-| user_id | String PK | Unique user identifier |
-| cash | Float | Available cash balance (seeded at 500,000) |
-| created_at | DateTime | Account creation time |
-
-### `portfolios`
-| Column | Type | Description |
-|---|---|---|
-| id | Integer PK | Auto-increment |
-| user_id | FK → users | Owner |
-| ticker | String(20) | Stock ticker (e.g. HDFC, RELIANCE) |
-| quantity | Integer | Current holding quantity |
-| updated_at | DateTime | Last trade time |
-
-Unique constraint: `(user_id, ticker)`
-
-### `analysis_sessions`
-| Column | Type | Description |
-|---|---|---|
-| session_id | String PK | Client-generated session ID |
-| user_id | FK → users | Owner |
-| goal | Text | User's original goal string |
-| decision_summary | Text | Analyst's final recommendation |
-| risk_approved | Boolean | Final risk auditor decision |
-| proposed_trades | JSON | List of proposed trade dicts |
-| retry_count | Integer | Number of risk retry loops used (max 3) |
-| executed | Boolean | Whether user has acted on this session |
-| created_at | DateTime | Analysis time |
-
-### `trade_history`
-| Column | Type | Description |
-|---|---|---|
-| id | Integer PK | Unique trade row ID returned to UI |
-| session_id | FK → analysis_sessions | Linked session |
-| user_id | FK → users | Owner |
-| ticker | String(20) | Stock ticker |
-| side | String(4) | BUY or SELL |
-| qty | Integer | Quantity |
-| proposed_price | Float (nullable) | LLM estimated price at analysis time |
-| executed_price | Float (nullable) | Real-time yfinance price at execution |
-| total_value | Float (nullable) | executed_price x qty, set at execution |
-| proposed | Boolean | Always true |
-| accepted | Boolean (nullable) | null=pending, true=accepted, false=rejected |
-| created_at | DateTime | Row creation time |
-| executed_at | DateTime (nullable) | Execution timestamp |
-
-Unique constraint: `(session_id, ticker, side)` — idempotency key
-
-**Trade lifecycle:**
-
-| Phase | `accepted` | `proposed_price` | `executed_price` |
-|---|---|---|---|
-| After `/api/analyze` | `null` (pending) | LLM estimate | — |
-| After `/api/execute` approve | `true` | LLM estimate | live yfinance price |
-| After `/api/execute` reject | `false` | LLM estimate | — |
+`HDFC` `TCS` `RELIANCE` `INFY` `WIPRO` `BAJFINANCE` `ICICIBANK` `SBIN` `PHARMA_1` (Sun Pharma)
 
 ---
 
-## MCP Server Tools
-
-The MCP server runs as a **separate subprocess** and communicates with the FastAPI app over stdin/stdout pipes. Each tool call opens its own DB session.
-
-| Tool | Exposed to LLM | Description |
-|---|---|---|
-| `get_portfolio(user_id)` | Yes | Fetches holdings + cash from DB |
-| `get_live_price(ticker, user_id)` | Yes | Real-time NSE price via yfinance; falls back to hardcoded prices if market is closed |
-| `record_trade(user_id, session_id, ticker, side, qty, price)` | No | Updates portfolio + DB; only called by `/api/execute` after user approval |
-
-Supported NSE tickers: `HDFC`, `RELIANCE`, `TCS`, `INFY`, `WIPRO`, `BAJFINANCE`, `ICICIBANK`, `SBIN`
-
----
-
-## API Reference
-
-### `POST /api/analyze`
-
-Runs the multi-agent loop. Saves proposed trades immediately to `trade_history` with `accepted=null`. Returns a `trade_id` per trade for tracking.
-
-**Request:**
-```json
-{
-  "user_id": "mallika_01",
-  "session_id": "sess_abc123",
-  "goal": "Check my holdings and prices, then tell me which stock to trim."
-}
-```
-
-**Response:**
-```json
-{
-  "session_id": "sess_abc123",
-  "decision_summary": "Based on your portfolio...",
-  "risk_approved": true,
-  "retry_count": 1,
-  "proposed_trades": [
-    {
-      "trade_id": 7,
-      "ticker": "HDFC",
-      "side": "SELL",
-      "qty": 20,
-      "proposed_price": 165000.0,
-      "accepted": null
-    }
-  ]
-}
-```
-
----
-
-### `POST /api/execute`
-
-Manual approval gate. On approval, fetches real-time price per trade and updates the portfolio. On rejection, marks all trades `accepted=false`.
-
-**Request:**
-```json
-{
-  "user_id": "mallika_01",
-  "session_id": "sess_abc123",
-  "approved": true
-}
-```
-
-**Response (approved):**
-```json
-{
-  "status": "executed",
-  "trade_results": [
-    {
-      "trade_id": 7,
-      "ticker": "HDFC",
-      "side": "SELL",
-      "qty": 20,
-      "proposed_price": 165000.0,
-      "executed_price": 164820.5,
-      "total_value": 3296410.0,
-      "status": "SUCCESS"
-    }
-  ],
-  "updated_portfolio": {
-    "holdings": {"HDFC": 80, "RELIANCE": 50, "TCS": 20},
-    "cash": 3796410.0
-  }
-}
-```
-
-**Response (rejected):**
-```json
-{
-  "status": "rejected",
-  "message": "Trade plan rejected. All proposed trades marked as rejected."
-}
-```
-
----
-
-## Setup
+## Setup & Deployment
 
 ### Prerequisites
 
 - Python 3.11+
-- Docker Desktop (for PostgreSQL)
-- [Ollama](https://ollama.ai) with `llama3.1` pulled
-- LangSmith account (free) for tracing
+- Docker Desktop
+- Anthropic API key
+- LangSmith API key (free, for tracing)
 
-### 1. Install dependencies
+### 1. Clone and install
 
 ```bash
+git clone <repo>
+cd portfolio_agenticAI
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-pip install sqlalchemy psycopg2-binary uvicorn python-multipart
 ```
 
 ### 2. Configure `.env`
@@ -282,7 +109,8 @@ pip install sqlalchemy psycopg2-binary uvicorn python-multipart
 ```env
 DATABASE_URL=postgresql://portfolio_user:portfolio_pass@localhost:5432/portfolio_db
 
-# LangSmith — get key from https://smith.langchain.com
+ANTHROPIC_API_KEY=your_anthropic_api_key
+
 LANGCHAIN_TRACING_V2=true
 LANGCHAIN_API_KEY=your_langsmith_api_key
 LANGCHAIN_PROJECT=portfolio-agent
@@ -295,109 +123,108 @@ LANGCHAIN_ENDPOINT=https://api.smith.langchain.com
 docker compose up -d
 ```
 
-### 4. Pull the LLM
+### 4. Start the server
 
 ```bash
-ollama pull llama3.1
+uvicorn main:app --reload --port 8000
 ```
 
-### 5. Start the server
+DB tables are created on first startup. First request for a new `user_id` seeds the portfolio:
+- Holdings: HDFC ×100, RELIANCE ×50, TCS ×20
+- Cash: ₹5,00,000
 
-```bash
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
-
-DB tables are created automatically on first startup. First request for a new `user_id` seeds the portfolio with:
-- Holdings: HDFC x100, RELIANCE x50, TCS x20
-- Cash: 500,000
+Open **http://localhost:8000** to use the UI.
 
 ---
 
-## Using the UI
+## Running the Eval Suite
 
-Open **http://localhost:8000**
+```bash
+# Run all 10 tests against the live server
+python -m eval.run_eval
 
-1. Enter a **User ID**
-2. Session ID is auto-generated (or enter your own)
-3. Enter a **Goal** — be specific to force tool calls:
-   - *"Check my holdings and prices, then tell me which stock to trim to reduce concentration risk."*
-   - *"Fetch my portfolio and suggest which stock to buy more of given current prices."*
-   - *"I want to rebalance. Check holdings and prices, then give me exact trades to make each stock equal weight."*
-4. Click **Run Analysis** — takes 30–60s with a local LLM
-5. Review the **Decision Summary**, **Risk status**, **Proposed Trades** table with IDs
-6. Click **Approve & Execute** or **Reject**
+# Run specific tests
+python -m eval.run_eval --ids T001 T002 T009
+
+# Save JSON report
+python -m eval.run_eval --out eval/results.json
+```
+
+Tests cover: guardrails, concentration risk, feedback mode, buy/sell intent, rebalancing, price hallucination, cash flagging, invalid tickers, quantity validation.
+
+Current score: **10/10 (100%)**
+
+---
+
+## API Reference
+
+### `POST /api/analyze`
+
+```json
+{
+  "user_id": "mallika_01",
+  "session_id": "sess_abc123",
+  "mode": "goal",
+  "goal": "Suggest which stock to trim to reduce concentration risk."
+}
+```
+
+Set `"mode": "feedback"` to run a full automated portfolio health review (no `goal` needed).
+
+**Response:**
+```json
+{
+  "session_id": "sess_abc123",
+  "decision_summary": "HDFC is your largest position at 40% of equity...",
+  "risk_approved": true,
+  "retry_count": 1,
+  "proposed_trades": [
+    { "trade_id": 7, "ticker": "HDFC", "side": "SELL", "qty": 20, "proposed_price": 756.2, "accepted": null }
+  ]
+}
+```
+
+### `POST /api/execute`
+
+```json
+{ "user_id": "mallika_01", "session_id": "sess_abc123", "approved": true }
+```
+
+On approval: fetches live price per trade, updates portfolio, returns execution results.
+On rejection: marks all trades `accepted=false`, no portfolio change.
+
+### `GET /api/portfolio/{user_id}`
+
+Returns current holdings with live prices and total portfolio value.
 
 ---
 
 ## Observability
 
-### LangSmith (recommended)
+**LangSmith** — https://smith.langchain.com → Projects → `portfolio-agent`
+Full node-by-node trace, tool calls, token usage, retry loops.
 
-**https://smith.langchain.com** → Projects → `portfolio-agent`
+**Swagger UI** — http://localhost:8000/docs
 
-Each run shows:
-- Full LLM inputs/outputs for analyst and risk auditor nodes
-- Tool calls and MCP tool results
-- LangGraph node-by-node execution trace
-- Token usage and latency per step
-- Retry loops with rejection feedback
-
-### Server console
-
-```
-[STARTUP] LangSmith tracing=ON project='portfolio-agent'
-[ANALYST NODE] Call #1
-[ANALYST] tool_calls: ['get_portfolio', 'get_live_price']
-[TOOL NODE] 2 call(s)
-  get_portfolio args={'user_id': 'mallika_01'}
-  → {"holdings": {"HDFC": 100, ...}, "cash": 500000.0}
-[RISK NODE]
-[RISK] Response: APPROVED — the plan is conservative...
-[EXECUTE] HDFC live price: 164820.5
-[MCP] record_trade user=mallika_01 SELL 20xHDFC@164820.5
-```
-
-### Swagger UI
-
-**http://localhost:8000/docs** — interactive API explorer
-
-### Direct DB queries
-
-```bash
-# Portfolio state
-docker exec portfolio_agenticai-postgres-1 psql -U portfolio_user -d portfolio_db \
-  -c "SELECT user_id, cash FROM users; SELECT * FROM portfolios;"
-
-# Trade history
-docker exec portfolio_agenticai-postgres-1 psql -U portfolio_user -d portfolio_db \
-  -c "SELECT id, ticker, side, qty, proposed_price, executed_price, accepted FROM trade_history;"
-
-# All sessions
-docker exec portfolio_agenticai-postgres-1 psql -U portfolio_user -d portfolio_db \
-  -c "SELECT session_id, goal, risk_approved, executed FROM analysis_sessions;"
-```
-
----
-
-## Idempotency
-
-Protection at two levels:
-
-**Session level** — `analysis_sessions.executed` is set to `true` before any trade runs. A second call to `/api/execute` with the same `session_id` returns HTTP 400.
-
-**Trade level** — `trade_history` has a unique constraint on `(session_id, ticker, side)`. `crud.record_trade` checks `accepted=True` before executing; duplicate calls return `ALREADY_EXECUTED` with the original `trade_id`.
+**Server logs** — analyst tool calls, risk decisions, MCP tool responses printed to stdout.
 
 ---
 
 ## Key Design Decisions
 
-| Decision | Rationale |
+| Decision | Reason |
 |---|---|
-| **PostgreSQL** | ACID guarantees for financial data; JSON column for flexible trade storage |
-| **Sync SQLAlchemy** | MCP server is a subprocess and cannot use async drivers; keeps DB layer consistent across both contexts |
-| **MCP subprocess** | Standard LLM tool protocol; decouples tool implementation from agent logic |
-| **`record_trade` hidden from LLM** | Prevents the LLM from executing trades autonomously; execution only via explicit user approval |
-| **`user_id` injected in `tool_node`** | LLMs unreliable at consistently passing IDs; injection at infrastructure layer is deterministic |
-| **Two-phase pricing** | `proposed_price` (analysis time) vs `executed_price` (execution time) captures real price slippage |
-| **Retry loop with feedback** | Risk rejection reason injected back as a message so the analyst can revise the plan |
-| **LangSmith tracing** | Zero-code observability — LangGraph auto-instruments when env vars are set |
+| `record_trade` hidden from LLM | Prevents autonomous execution — human approval is the only trigger |
+| `user_id` injected at tool node | LLMs unreliable at passing IDs consistently; injection is deterministic |
+| Two-phase pricing | `proposed_price` (analysis) vs `executed_price` (execution) captures real slippage |
+| Retry loop with accumulated feedback | Risk rejection reasons injected back so analyst can revise the plan |
+| MCP subprocess | Decouples tool implementation from agent; standard protocol |
+| Sync SQLAlchemy | MCP subprocess cannot use async drivers; keeps DB layer uniform |
+
+---
+
+## TODO
+
+- **Memory-based responses** — persist per-user conversation history and past analysis sessions using LangGraph's `MemorySaver` or a vector store, so the analyst can reference prior recommendations and portfolio evolution over time
+- **RAGAS evaluation** — integrate [RAGAS](https://docs.ragas.io) metrics (faithfulness, answer relevance, context precision) to score analyst responses against retrieved portfolio data, replacing keyword-based summary checks with semantic evaluation
+- **Agent workflow evaluation framework** — adopt a structured agentic eval framework (e.g. LangSmith evaluators or a custom harness) to score tool-call correctness, multi-step reasoning chains, and risk auditor decision quality across a larger synthetic portfolio dataset

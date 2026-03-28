@@ -1,10 +1,13 @@
 anthropic
-openai
 pydantic
 yfinance
 python-dotenv
 mcp
 langgraph
-langchain-ollama
 langchain-core
+langchain_anthropic
 fastapi
+sqlalchemy
+psycopg2-binary
+uvicorn
+python-multipart

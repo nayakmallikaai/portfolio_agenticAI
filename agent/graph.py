@@ -7,7 +7,7 @@ from typing import Annotated, TypedDict, Dict, Any, List
 
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
-from langchain_ollama import ChatOllama
+from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import ToolMessage, SystemMessage, HumanMessage
 from mcp import ClientSession
 
@@ -22,6 +22,7 @@ class PortfolioState(TypedDict):
     risk_approval: bool
     final_plan: str
     retry_count: int
+    rejection_list: list
 
 
 # ── Main entry point ───────────────────────────────────────────────────────────
@@ -33,26 +34,51 @@ async def run_analysis(goal: str, user_id: str, mcp_holder: Dict[str, Any]) -> D
     session: ClientSession = mcp_holder["session"]
 
     # Only read-only tools exposed to the LLM (record_trade held back)
+    # Strip user_id from schemas — it is auto-injected by the tool node, model must never ask for it
     mcp_tools_resp = await session.list_tools()
-    read_tools = [
-        {"name": t.name, "description": t.description, "parameters": t.inputSchema}
-        for t in mcp_tools_resp.tools
-        if t.name != "record_trade"
-    ]
-    llm = ChatOllama(model="llama3.1", temperature=0).bind_tools(read_tools)
+    read_tools = []
+    for t in mcp_tools_resp.tools:
+        if t.name == "record_trade":
+            continue
+        schema = dict(t.inputSchema)
+        props = {k: v for k, v in schema.get("properties", {}).items() if k != "user_id"}
+        required = [r for r in schema.get("required", []) if r != "user_id"]
+        read_tools.append({
+            "name": t.name,
+            "description": t.description,
+            "input_schema": {**schema, "properties": props, "required": required},
+        })
+    llm = ChatAnthropic(model="claude-sonnet-4-6", temperature=0).bind_tools(read_tools)
 
     # ── NODE 1: Analyst ────────────────────────────────────────────────────────
     def analyst_node(state: PortfolioState):
         print(f"\n{'='*60}\n[ANALYST NODE]")
-        sys_msg = SystemMessage(content=(
-            "You are a Senior Investment Analyst. "
-            "Use get_portfolio and get_live_price to retrieve live data, then propose a trade plan. "
-            "When calling get_portfolio, pass user_id as an argument. "
-            "At the end of your response output proposed trades in this exact JSON block:\n"
-            "```json\n"
-            '{"trades": [{"ticker": "X", "side": "BUY or SELL", "qty": 10, "price": 1000.0}]}\n'
-            "```"
-        ))
+        sys_msg = SystemMessage(content=
+            f"""You are a portfolio analyst for user '{user_id}'. Analyse the portfolio and address the user's goal.
+
+            Use your tools to fetch current holdings and live prices, then reason from that data.
+
+            ANALYSIS APPROACH:
+            - Understand what the user is actually asking for before proposing anything.
+            - If the portfolio already satisfies the goal, say so clearly and propose nothing.
+            - Only propose trades when there is a genuine, specific reason grounded in the data.
+            - Prefer small, targeted adjustments over sweeping changes.
+
+            CONSTRAINTS:
+            - Only use prices from get_live_price — never your own knowledge.
+            - Only trade these tickers: HDFC, TCS, RELIANCE, INFY, WIPRO, BAJFINANCE, ICICIBANK, SBIN, PHARMA_1, PHARMA1.
+            - Never sell more shares than currently held. Never buy more than cash allows.
+            - Do not predict future prices or market direction.
+            - If a price fetch fails for one or more tickers, proceed with available data and note the missing tickers in your response.
+            - If asked something unrelated to portfolio management, respond:
+              "I can only help with portfolio management goals."
+
+            RESPONSE FORMAT — NON NEGOTIABLE:
+            - Plain conversational text only. No markdown, no tables, no headers, no emojis, no bold.
+            - Maximum 80 words across a maximum of 2 paragraphs.
+            - End every response with this exact JSON block (no text after it):
+            {{"trades": [{{"ticker": "X", "side": "BUY/SELL", "qty": 0, "price": 0.0}}]}}
+            If no trades: {{"trades": []}}""")
         response = llm.invoke([sys_msg] + state["messages"])
         print(f"[ANALYST] content: {str(response.content)[:300]}")
         print(f"[ANALYST] tool_calls: {[tc['name'] for tc in response.tool_calls] if response.tool_calls else 'NONE'}")
@@ -81,23 +107,59 @@ async def run_analysis(goal: str, user_id: str, mcp_holder: Dict[str, Any]) -> D
             f"{type(m).__name__}: {m.content}" for m in last_two if m.content
         )
         print(f"[RISK] Sending:\n{conversation_text[:400]}")
-        audit_llm = ChatOllama(model="llama3.1", temperature=0)
+        audit_llm = ChatAnthropic(model="claude-haiku-4-5-20251001", temperature=0)
         response = audit_llm.invoke([
-            SystemMessage(content="You are a Risk Manager. Review the analyst's trade proposal. Reply with 'APPROVED' or 'REJECTED' plus a specific reason."),
+            SystemMessage(content="""You are a risk auditor for an Indian stock portfolio.
+
+            REJECT the plan if ANY of the following are true:
+            - A recommended price deviates more than 2% from the live price provided
+            - A SELL quantity exceeds the user's current holdings for that ticker
+            - A BUY quantity would require more cash than the user has available
+            - A trade involves a ticker outside the supported list: HDFC, TCS, RELIANCE, INFY, WIPRO, BAJFINANCE, ICICIBANK, SBIN, PHARMA_1, PHARMA1
+            - The plan proposes more than 3 trades at once (no sweeping portfolio overhauls)
+            - Any single trade exceeds 30% of total portfolio value
+            - The analyst made factual claims not supported by the portfolio or price data
+            - The plan is unnecessarily aggressive given the user's stated goal
+
+            APPROVE if the plan is conservative, data-grounded, proportionate to the goal,
+            and each proposed trade has a clear stated reason.
+            A plan with no trades is also valid — APPROVE it if the analyst correctly
+            determined no action was needed.
+
+            Start your response with exactly APPROVED or REJECTED, then explain why briefly."""),
             HumanMessage(content=conversation_text),
         ])
         print(f"[RISK] Response: {response.content}")
         approved = "APPROVED" in response.content.upper()
         retry_count = state.get("retry_count", 0)
+        # Get accumulated errors from previous retries
+        previous_errors = state.get("rejection_list", [])
         result: Dict[str, Any] = {"risk_approval": approved, "retry_count": retry_count + 1}
+        print(f"[RISK] Response: {response.content}")
+
         if not approved:
+            # Extract clean reasons from this rejection
+            new_reasons = extract_rejection_reasons(response.content)
+            
+            # Accumulate across retries
+            all_reasons = previous_errors + new_reasons
+            
+            # Store for next retry
+            result["rejection_list"] = all_reasons
+            
+            # Build clean feedback message
+            reasons_text = "\n".join(f"- {r}" for r in all_reasons)
+            
             result["messages"] = [HumanMessage(
                 content=(
-                    f"RISK MANAGER FEEDBACK (attempt {retry_count + 1}/{MAX_RETRIES}): REJECTED.\n"
-                    f"Reason: {response.content}\n"
-                    f"Revise your trade plan to address these concerns."
+                    f"RISK MANAGER FEEDBACK "
+                    f"(attempt {retry_count + 1}/{MAX_RETRIES}): REJECTED.\n\n"
+                    f"You must fix ALL of these issues:\n"
+                    f"{reasons_text}\n\n"
+                    f"Revise your trade plan addressing each point above."
                 )
             )]
+        
         return result
 
     # ── Routing ────────────────────────────────────────────────────────────────
@@ -132,12 +194,12 @@ async def run_analysis(goal: str, user_id: str, mcp_holder: Dict[str, Any]) -> D
 
     last_analyst_content = ""
     for msg in reversed(final_state["messages"]):
-        if getattr(msg, "type", None) == "ai" and msg.content:
+        if getattr(msg, "type", None) == "ai" and isinstance(msg.content, str) and msg.content.strip():
             last_analyst_content = msg.content
             break
 
-    proposed_trades = parse_proposed_trades(last_analyst_content)
-    if not proposed_trades:
+    proposed_trades, block_found = parse_proposed_trades(last_analyst_content)
+    if not block_found:
         proposed_trades = extract_trades_via_llm(last_analyst_content)
 
     return {
@@ -146,3 +208,21 @@ async def run_analysis(goal: str, user_id: str, mcp_holder: Dict[str, Any]) -> D
         "proposed_trades": proposed_trades,
         "retry_count": final_state.get("retry_count", 0),
     }
+
+# ── Helper methods ─────────────────────────────────────────────────────────
+def extract_rejection_reasons(risk_response: str) -> list[str]:
+    lines = risk_response.strip().split("\n")
+    reasons = []
+    
+    for line in lines:
+        line = line.strip()
+        # Skip the REJECTED line itself
+        if not line or line.upper().startswith("REJECTED"):
+            continue
+        # Skip very short lines
+        if len(line) < 10:
+            continue
+        reasons.append(line)
+    
+    # Return max 3 most important reasons
+    return reasons[:3] 

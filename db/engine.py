@@ -13,3 +13,18 @@ SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
 class Base(DeclarativeBase):
     pass
+
+
+def migrate_db() -> None:
+    """Safe incremental migrations — adds columns that don't exist yet."""
+    from sqlalchemy import text
+    migrations = [
+        "ALTER TABLE analysis_sessions ADD COLUMN IF NOT EXISTS mode VARCHAR(10) NOT NULL DEFAULT 'goal'",
+    ]
+    with engine.connect() as conn:
+        for stmt in migrations:
+            try:
+                conn.execute(text(stmt))
+                conn.commit()
+            except Exception as e:
+                print(f"[MIGRATE] skipped: {e}")

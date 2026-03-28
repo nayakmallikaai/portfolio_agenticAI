@@ -27,15 +27,10 @@ _NSE_MAP = {
     "BAJFINANCE": "BAJFINANCE.NS",
     "ICICIBANK":  "ICICIBANK.NS",
     "SBIN":       "SBIN.NS",
+    "PHARMA_1":   "SUNPHARMA.NS",
+    "PHARMA1":    "SUNPHARMA.NS",
 }
 
-# Fallback prices used when yfinance is unavailable / market is closed
-_FALLBACK_PRICES = {
-    "HDFC": 165_000.0,
-    "RELIANCE": 2_900.0,
-    "TCS": 3_800.0,
-    "INFY": 1_600.0,
-}
 
 
 # ── Tool 1: get_portfolio ─────────────────────────────────────────────────────
@@ -53,9 +48,10 @@ def get_portfolio(user_id: str) -> str:
 
 # ── Tool 2: get_live_price ────────────────────────────────────────────────────
 @mcp.tool()
-def get_live_price(ticker: str, user_id: str = "") -> float:
+def get_live_price(ticker: str, user_id: str = "") -> str:
     """
-    Fetches the real-time market price for a stock ticker from NSE via Yahoo Finance.
+    Fetches the current market price for a stock ticker from NSE via Yahoo Finance.
+    Returns the live price if the market is open, otherwise the previous day's closing price.
     user_id is accepted for uniform tool signature but not used for price lookup.
     """
     upper = ticker.upper()
@@ -63,15 +59,24 @@ def get_live_price(ticker: str, user_id: str = "") -> float:
     print(f"[MCP] get_live_price ticker={ticker} → {yf_symbol}")
     try:
         stock = yf.Ticker(yf_symbol)
+
+        # Try live price first (works when market is open)
         price = stock.fast_info.last_price
         if price and price > 0:
-            return round(float(price), 2)
+            print(f"[MCP] Live price for {ticker}: {price}")
+            return str(round(float(price), 2))
+
+        # Market closed — fall back to previous close from daily history
+        hist = stock.history(period="5d")
+        if not hist.empty:
+            prev_close = hist["Close"].iloc[-1]
+            print(f"[MCP] Market closed, using prev close for {ticker}: {prev_close}")
+            return str(round(float(prev_close), 2))
+
     except Exception as e:
         print(f"[MCP] yfinance error for {yf_symbol}: {e}")
 
-    fallback = _FALLBACK_PRICES.get(upper, 1200.0)
-    print(f"[MCP] Using fallback price for {ticker}: {fallback}")
-    return fallback
+    return f"ERROR: price unavailable for {ticker}"
 
 
 # ── Tool 3: record_trade ──────────────────────────────────────────────────────

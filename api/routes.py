@@ -1,6 +1,7 @@
 """
 API route handlers. Pure HTTP concerns only — no LLM or graph logic here.
 """
+import asyncio
 import json
 from typing import Dict, Any
 
@@ -15,47 +16,156 @@ router = APIRouter(prefix="/api")
 
 _mcp_holder: Dict[str, Any] = {}
 
+MIN_GOAL_LENGTH = 10
+MAX_GOAL_LENGTH = 500
+
+PORTFOLIO_KEYWORDS = [
+    "portfolio", "stock", "buy", "sell", "invest", 
+    "trade", "rebalance", "risk", "holdings", "price",
+    "shares", "equity", "cash", "return", "diversif",
+    "trim", "reduce", "increase", "allocation"
+]
+
+BLOCKED_PATTERNS = [
+    "how are you", "what are you", "who are you",
+    "hello", "hi ", "hey ", "test", "ignore previous",
+    "forget your instructions", "pretend you are"
+]
+
+# Predefined goal injected when mode="feedback"
+_FEEDBACK_GOAL = (
+    "Do a comprehensive health check of my portfolio. "
+    "Review concentration risk, sector diversification, cash-to-equity ratio, and how each holding is performing. "
+    "If the portfolio looks healthy and balanced, say so clearly and propose no trades. "
+    "Only suggest trades if there is a clear, specific problem — such as dangerous concentration, "
+    "excessive idle cash, or a significantly underperforming holding. "
+    "Quality over quantity: one well-reasoned trade suggestion is better than several forced ones."
+)
+
 
 def set_mcp_holder(holder: Dict[str, Any]) -> None:
     global _mcp_holder
     _mcp_holder = holder
 
 
+# ── GET /api/portfolio/{user_id} ──────────────────────────────────────────────
+@router.get("/portfolio/{user_id}")
+async def get_portfolio_view(user_id: str):
+    """
+    Returns the user's current portfolio with live prices for each holding.
+    Auto-seeds the user with default holdings on first call.
+    """
+    db = SessionLocal()
+    try:
+        portfolio = crud.get_portfolio(db, user_id)
+    finally:
+        db.close()
+
+    mcp_session = _mcp_holder["session"]
+    tickers = list(portfolio["holdings"].keys())
+
+    # Fetch all live prices concurrently
+    price_results = await asyncio.gather(*[
+        mcp_session.call_tool("get_live_price", {"ticker": t, "user_id": user_id})
+        for t in tickers
+    ])
+
+    holdings = []
+    equity_total = 0.0
+    for ticker, result in zip(tickers, price_results):
+        qty = portfolio["holdings"][ticker]
+        price = float(result.content[0].text)
+        value = qty * price
+        equity_total += value
+        holdings.append({
+            "ticker": ticker,
+            "qty": qty,
+            "live_price": round(price, 2),
+            "value": round(value, 2),
+        })
+
+    holdings.sort(key=lambda x: x["value"], reverse=True)
+    total_value = round(equity_total + portfolio["cash"], 2)
+
+    return {
+        "user_id": user_id,
+        "cash": portfolio["cash"],
+        "holdings": holdings,
+        "equity_value": round(equity_total, 2),
+        "total_value": total_value,
+    }
+
+
 # ── POST /api/analyze ─────────────────────────────────────────────────────────
 @router.post("/analyze")
 async def analyze(req: AnalyzeRequest):
     """
-    Run multi-agent analysis. Saves proposed trades to trade_history immediately
-    (proposed=True, accepted=None). Returns trade IDs so the UI can track them.
+    Run multi-agent analysis.
+    mode="goal"     → uses the user-supplied goal string
+    mode="feedback" → uses a predefined portfolio health review prompt
     """
+    if req.mode == "goal" and not req.goal:
+        raise HTTPException(status_code=400, detail="goal is required when mode is 'goal'.")
+
+    effective_goal = _FEEDBACK_GOAL if req.mode == "feedback" else req.goal
+    # Guardrail 1 : Evaluate if the goal is relevant and adheres to portfolio queries 
+    is_valid, error_msg = validate_goal(effective_goal)
+    
+    if not is_valid:
+        return {"decision_summary": error_msg, "risk_approved": False, "proposed_trades": []}
+
     db = SessionLocal()
     try:
         crud.get_or_create_user(db, req.user_id)
 
-        result = await run_analysis(req.goal, req.user_id, _mcp_holder)
+        result = await run_analysis(effective_goal, req.user_id, _mcp_holder)
 
         crud.save_analysis_session(
             db,
             session_id=req.session_id,
             user_id=req.user_id,
-            goal=req.goal,
+            mode=req.mode,
+            goal=effective_goal,
             decision_summary=result["decision_summary"],
             risk_approved=result["risk_approved"],
             proposed_trades=result["proposed_trades"],
             retry_count=result["retry_count"],
         )
 
-        # Save proposed trades to trade_history now, before user approves
         proposed_rows = crud.save_proposed_trades(
             db, req.session_id, req.user_id, result["proposed_trades"]
         )
 
+        if not result["risk_approved"]:
+            # No trades proposed → analyst concluded the portfolio is already in good shape
+            if not result["proposed_trades"]:
+                friendly_summary = (
+                    "Your portfolio looks good as it stands. "
+                    "No changes are needed to meet your goal right now."
+                )
+            # Trades were proposed but risk auditor rejected them after all retries
+            else:
+                friendly_summary = (
+                    "The analysis could not produce a safe plan for your goal. "
+                    "The proposed actions were flagged as too risky or outside the supported parameters. "
+                    "Try rephrasing your goal or adjusting the scope."
+                )
+            return {
+                "session_id": req.session_id,
+                "mode": req.mode,
+                "decision_summary": friendly_summary,
+                "risk_approved": False,
+                "retry_count": result["retry_count"],
+                "proposed_trades": [],
+            }
+
         return {
             "session_id": req.session_id,
+            "mode": req.mode,
             "decision_summary": result["decision_summary"],
             "risk_approved": result["risk_approved"],
             "retry_count": result["retry_count"],
-            "proposed_trades": proposed_rows,   # includes trade_id per row
+            "proposed_trades": proposed_rows,
         }
     finally:
         db.close()
@@ -65,10 +175,7 @@ async def analyze(req: AnalyzeRequest):
 @router.post("/execute")
 async def execute(req: ExecuteRequest):
     """
-    Manual approval gate.
-    - Reject: marks all proposed trades as accepted=False.
-    - Approve: fetches live price per trade, updates trade row in-place (accepted=True).
-    Returns trade_id for every trade.
+    Manual approval gate. Fetches live price per trade before recording.
     """
     db = SessionLocal()
     try:
@@ -78,7 +185,6 @@ async def execute(req: ExecuteRequest):
         if session_data.executed:
             raise HTTPException(status_code=400, detail="Trades already executed for this session.")
 
-        # Lock session immediately to prevent double execution
         crud.mark_session_executed(db, req.session_id)
 
         if not req.approved:
@@ -96,7 +202,6 @@ async def execute(req: ExecuteRequest):
         trade_results = []
 
         for trade in trades:
-            # ── Fetch real-time price right before recording ──────────────────
             price_result = await mcp_session.call_tool(
                 "get_live_price",
                 {"ticker": trade["ticker"], "user_id": req.user_id},
@@ -104,7 +209,6 @@ async def execute(req: ExecuteRequest):
             live_price = float(price_result.content[0].text)
             print(f"[EXECUTE] {trade['ticker']} live price: ₹{live_price}")
 
-            # ── Update the existing proposed row in trade_history ─────────────
             result = await mcp_session.call_tool(
                 "record_trade",
                 {
@@ -136,3 +240,24 @@ async def execute(req: ExecuteRequest):
         }
     finally:
         db.close()
+
+def validate_goal(goal: str) -> tuple[bool, str]:
+    # Too short
+    if len(goal.strip()) < MIN_GOAL_LENGTH:
+        return False, "Please describe your portfolio goal in more detail"
+    
+    # Too long
+    if len(goal) > MAX_GOAL_LENGTH:
+        return False, "Goal is too long. Please keep it under 500 characters"
+    
+    # Blocked patterns - prompt injection / irrelevant
+    goal_lower = goal.lower()
+    for pattern in BLOCKED_PATTERNS:
+        if pattern in goal_lower:
+            return False, "Please provide a valid portfolio management goal"
+    
+    # No financial keywords
+    if not any(kw in goal_lower for kw in PORTFOLIO_KEYWORDS):
+        return False, "I can only help with portfolio management goals"
+    
+    return True, ""

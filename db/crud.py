@@ -51,11 +51,11 @@ def _upsert_holding(db: Session, user_id: str, ticker: str, qty_delta: int) -> N
 # ── Analysis session ──────────────────────────────────────────────────────────
 
 def save_analysis_session(
-    db: Session, session_id: str, user_id: str, goal: str,
+    db: Session, session_id: str, user_id: str, mode: str, goal: str,
     decision_summary: str, risk_approved: bool, proposed_trades: list, retry_count: int,
 ) -> AnalysisSession:
     row = AnalysisSession(
-        session_id=session_id, user_id=user_id, goal=goal,
+        session_id=session_id, user_id=user_id, mode=mode, goal=goal,
         decision_summary=decision_summary, risk_approved=risk_approved,
         proposed_trades=proposed_trades, retry_count=retry_count, executed=False,
     )
