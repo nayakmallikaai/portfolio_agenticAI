@@ -7,7 +7,14 @@ __pycache__/
 
 # Virtual env
 venv/
+.venv/
+
+# Environment — keep .env.example, ignore actual secrets
 .env
+!.env.example
+
+# Eval output
+eval/results.json
 
 # Mac
 .DS_Store

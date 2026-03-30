@@ -7,6 +7,11 @@ load_dotenv()
 
 DATABASE_URL = os.environ["DATABASE_URL"]
 
+# Railway (and some other providers) emit "postgresql://" but SQLAlchemy 2.x
+# requires the explicit driver scheme "postgresql+psycopg2://"
+if DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
+
 engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=5, max_overflow=10)
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 

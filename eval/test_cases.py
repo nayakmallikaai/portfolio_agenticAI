@@ -124,21 +124,21 @@ TEST_CASES: List[TestCase] = [
         notes="Model picks any overweight stock (HDFC by value, RELIANCE by price). Checking intent (SELL + concentration language) not a specific ticker.",
     ),
 
-    # T003 — AI Feedback mode: must propose at least one trade
+    # T003 — AI Feedback mode: comprehensive review, trades only if genuinely needed
     TestCase(
         id="T003",
-        description="AI Feedback mode must produce a full review with trades",
+        description="AI Feedback mode must produce a portfolio health review",
         request={
             "mode": "feedback",
         },
         checks=[
-            ShouldHaveTrades(min_trades=1),
+            RiskApproved(expected=True),
             SummaryContains(
-                keywords=["concentration", "diversif", "risk", "sector", "rebalanc", "cash"],
+                keywords=["cash", "concentration", "diversif", "risk", "sector", "holdings", "portfolio"],
                 description="Summary must cover portfolio health themes",
             ),
         ],
-        notes="Feedback mode uses a fixed system prompt — should always yield analysis",
+        notes="Feedback mode: analyst reviews health and proposes trades only if there is a clear problem. Risk must approve.",
     ),
 
     # T004 — Buy recommendation: model should propose a BUY

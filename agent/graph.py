@@ -2,13 +2,14 @@
 LangGraph multi-agent workflow.
 All LLM and graph logic lives here; no HTTP or DB imports.
 """
-import asyncio
-from typing import Annotated, TypedDict, Dict, Any, List
+import json
+import re
+from typing import Annotated, TypedDict, Dict, Any, Optional
 
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 from langchain_anthropic import ChatAnthropic
-from langchain_core.messages import ToolMessage, SystemMessage, HumanMessage
+from langchain_core.messages import ToolMessage, SystemMessage, HumanMessage, AIMessage
 from mcp import ClientSession
 
 from agent.parsing import parse_proposed_trades, extract_trades_via_llm
@@ -19,10 +20,12 @@ MAX_RETRIES = 3
 # ── Shared graph state ─────────────────────────────────────────────────────────
 class PortfolioState(TypedDict):
     messages: Annotated[list, add_messages]
-    risk_approval: bool
-    final_plan: str
+    portfolio_snapshot: dict        # populated by tool_node on first get_portfolio call
+    live_prices: dict               # populated by tool_node on each get_live_price call
+    risk_approved: bool
+    risk_feedback: str              # rejection reason fed back to analyst on retry
+    risk_note: str                  # auditor's explanation shown to the end user
     retry_count: int
-    rejection_list: list
 
 
 # ── Main entry point ───────────────────────────────────────────────────────────
@@ -33,8 +36,8 @@ async def run_analysis(goal: str, user_id: str, mcp_holder: Dict[str, Any]) -> D
     """
     session: ClientSession = mcp_holder["session"]
 
-    # Only read-only tools exposed to the LLM (record_trade held back)
-    # Strip user_id from schemas — it is auto-injected by the tool node, model must never ask for it
+    # Only read-only tools exposed to the LLM (record_trade held back).
+    # Strip user_id from schemas — auto-injected by tool_node, model must never ask for it.
     mcp_tools_resp = await session.list_tools()
     read_tools = []
     for t in mcp_tools_resp.tools:
@@ -48,28 +51,59 @@ async def run_analysis(goal: str, user_id: str, mcp_holder: Dict[str, Any]) -> D
             "description": t.description,
             "input_schema": {**schema, "properties": props, "required": required},
         })
-    llm = ChatAnthropic(model="claude-sonnet-4-6", temperature=0).bind_tools(read_tools)
+    llm_with_tools = ChatAnthropic(model="claude-sonnet-4-6", temperature=0).bind_tools(read_tools)
+    llm_no_tools   = ChatAnthropic(model="claude-sonnet-4-6", temperature=0)  # used once data is loaded
 
     # ── NODE 1: Analyst ────────────────────────────────────────────────────────
     def analyst_node(state: PortfolioState):
         print(f"\n{'='*60}\n[ANALYST NODE]")
+
+        has_portfolio = bool(state.get("portfolio_snapshot"))
+        has_prices = bool(state.get("live_prices"))
+
+        if has_portfolio and has_prices:
+            # Data already in state — inject directly and use a tool-free LLM so the
+            # model physically cannot call tools and trigger an infinite loop.
+            data_section = (
+                f"Portfolio: {json.dumps(state['portfolio_snapshot'])}\n"
+                f"Live prices: {json.dumps(state['live_prices'])}"
+            )
+        elif has_portfolio:
+            # Portfolio fetched but prices still needed
+            data_section = (
+                f"Portfolio is loaded: {json.dumps(state['portfolio_snapshot'])}\n"
+                f"Live prices have not been fetched yet — call get_live_price for each holding."
+            )
+        else:
+            # Nothing fetched yet — let the model decide to use tools
+            data_section = (
+                "Portfolio and prices have not been fetched yet. "
+                "Use your tools to gather the data you need before making recommendations."
+            )
+
+        feedback_section = ""
+        if state.get("risk_feedback"):
+            feedback_section = (
+                f"\nPrevious plan was REJECTED by the risk auditor. "
+                f"You must fix these issues before proposing again:\n{state['risk_feedback']}"
+            )
+
         sys_msg = SystemMessage(content=
             f"""You are a portfolio analyst for user '{user_id}'. Analyse the portfolio and address the user's goal.
 
-            Use your tools to fetch current holdings and live prices, then reason from that data.
+            {data_section}{feedback_section}
 
             ANALYSIS APPROACH:
-            - Understand what the user is actually asking for before proposing anything.
-            - If the portfolio already satisfies the goal, say so clearly and propose nothing.
-            - Only propose trades when there is a genuine, specific reason grounded in the data.
-            - Prefer small, targeted adjustments over sweeping changes.
+            - Read the goal first. Only act if the portfolio genuinely needs to change.
+            - Propose nothing if the goal is already met.
+            - When trades are needed, keep them small and data-grounded.
 
             CONSTRAINTS:
-            - Only use prices from get_live_price — never your own knowledge.
+            - Only use prices from live_prices state or get_live_price tool — never your own knowledge.
             - Only trade these tickers: HDFC, TCS, RELIANCE, INFY, WIPRO, BAJFINANCE, ICICIBANK, SBIN, PHARMA_1, PHARMA1.
-            - Never sell more shares than currently held. Never buy more than cash allows.
+            - Never sell more shares than held. Never buy more than cash allows.
             - Do not predict future prices or market direction.
-            - If a price fetch fails for one or more tickers, proceed with available data and note the missing tickers in your response.
+            - If a price is unavailable, note it and proceed with remaining data.
             - If asked something unrelated to portfolio management, respond:
               "I can only help with portfolio management goals."
 
@@ -79,7 +113,19 @@ async def run_analysis(goal: str, user_id: str, mcp_holder: Dict[str, Any]) -> D
             - End every response with this exact JSON block (no text after it):
             {{"trades": [{{"ticker": "X", "side": "BUY/SELL", "qty": 0, "price": 0.0}}]}}
             If no trades: {{"trades": []}}""")
-        response = llm.invoke([sys_msg] + state["messages"])
+
+        # Keep only HumanMessage and text-only AIMessages.
+        # Strip ToolMessage and any AIMessage that contains tool_calls — Anthropic requires
+        # every tool_use block to be immediately followed by its tool_result, so including
+        # one without the other causes a 400. Data is already in state, no need to replay it.
+        clean_history = [
+            m for m in state["messages"]
+            if isinstance(m, HumanMessage)
+            or (isinstance(m, AIMessage) and not getattr(m, "tool_calls", None))
+        ]
+
+        active_llm = llm_no_tools if (has_portfolio and has_prices) else llm_with_tools
+        response = active_llm.invoke([sys_msg] + clean_history)
         print(f"[ANALYST] content: {str(response.content)[:300]}")
         print(f"[ANALYST] tool_calls: {[tc['name'] for tc in response.tool_calls] if response.tool_calls else 'NONE'}")
         return {"messages": [response]}
@@ -88,78 +134,123 @@ async def run_analysis(goal: str, user_id: str, mcp_holder: Dict[str, Any]) -> D
     async def tool_node(state: PortfolioState):
         last_msg = state["messages"][-1]
         print(f"\n[TOOL NODE] {len(last_msg.tool_calls)} call(s)")
-        results = []
+
+        tool_messages = []
+        portfolio_snapshot = state.get("portfolio_snapshot", {})
+        live_prices = state.get("live_prices", {})
+
         for tc in last_msg.tool_calls:
-            # Inject user_id so the LLM doesn't have to remember to include it
             args = {**tc["args"], "user_id": user_id}
             print(f"  {tc['name']} args={args}")
             result = await session.call_tool(tc["name"], args)
-            text = result.content[0].text
-            print(f"  → {text[:200]}")
-            results.append(ToolMessage(tool_call_id=tc["id"], content=text))
-        return {"messages": results}
+            raw = result.content[0].text
+            print(f"  → {raw[:200]}")
+
+            if tc["name"] == "get_portfolio":
+                try:
+                    portfolio_snapshot = json.loads(raw)
+                except Exception:
+                    portfolio_snapshot = {"raw": raw}
+                tool_messages.append(ToolMessage(
+                    tool_call_id=tc["id"],
+                    content="Portfolio snapshot updated in state.",
+                ))
+
+            elif tc["name"] == "get_live_price":
+                ticker = tc["args"].get("ticker", "UNKNOWN").upper()
+                try:
+                    live_prices[ticker] = float(raw)
+                except ValueError:
+                    live_prices[ticker] = raw  # keep error string so analyst can note it
+                tool_messages.append(ToolMessage(
+                    tool_call_id=tc["id"],
+                    content=f"Live price for {ticker} updated in state: {raw}",
+                ))
+
+            else:
+                tool_messages.append(ToolMessage(
+                    tool_call_id=tc["id"],
+                    content=raw,
+                ))
+
+        return {
+            "messages": tool_messages,
+            "portfolio_snapshot": portfolio_snapshot,
+            "live_prices": live_prices,
+        }
 
     # ── NODE 3: Risk auditor ───────────────────────────────────────────────────
     def risk_node(state: PortfolioState):
         print(f"\n[RISK NODE]")
-        last_two = state["messages"][-2:]
-        conversation_text = "\n".join(
-            f"{type(m).__name__}: {m.content}" for m in last_two if m.content
+
+        # Extract only what the auditor needs: portfolio, prices, and the proposed trades JSON
+        portfolio = json.dumps(state.get("portfolio_snapshot", {}))
+        prices = json.dumps(state.get("live_prices", {}))
+
+        # Pull the trades block from the last analyst message
+        last_analyst = ""
+        for msg in reversed(state["messages"]):
+            if getattr(msg, "type", None) == "ai" and isinstance(msg.content, str) and msg.content.strip():
+                last_analyst = msg.content
+                break
+        trades_block = ""
+        match = re.search(r'\{"trades":\s*\[.*?\]\s*\}', last_analyst, re.DOTALL)
+        if match:
+            trades_block = match.group(0)
+
+        conversation_text = (
+            f"Portfolio: {portfolio}\n"
+            f"Live prices: {prices}\n"
+            f"Proposed trades: {trades_block or 'none'}"
         )
         print(f"[RISK] Sending:\n{conversation_text[:400]}")
+
         audit_llm = ChatAnthropic(model="claude-haiku-4-5-20251001", temperature=0)
         response = audit_llm.invoke([
             SystemMessage(content="""You are a risk auditor for an Indian stock portfolio.
 
-            REJECT the plan if ANY of the following are true:
-            - A recommended price deviates more than 2% from the live price provided
-            - A SELL quantity exceeds the user's current holdings for that ticker
-            - A BUY quantity would require more cash than the user has available
-            - A trade involves a ticker outside the supported list: HDFC, TCS, RELIANCE, INFY, WIPRO, BAJFINANCE, ICICIBANK, SBIN, PHARMA_1, PHARMA1
-            - The plan proposes more than 3 trades at once (no sweeping portfolio overhauls)
-            - Any single trade exceeds 30% of total portfolio value
-            - The analyst made factual claims not supported by the portfolio or price data
-            - The plan is unnecessarily aggressive given the user's stated goal
+            REJECT if ANY rule is violated:
+            - Price deviates >2% from live price
+            - SELL qty exceeds current holdings
+            - BUY cost exceeds available cash
+            - Ticker not in: HDFC, TCS, RELIANCE, INFY, WIPRO, BAJFINANCE, ICICIBANK, SBIN, PHARMA_1, PHARMA1
+            - More than 3 trades proposed
+            - Single trade exceeds 30% of total portfolio value
+            - Claims unsupported by the data
+            - Plan is aggressive relative to the goal
 
-            APPROVE if the plan is conservative, data-grounded, proportionate to the goal,
-            and each proposed trade has a clear stated reason.
-            A plan with no trades is also valid — APPROVE it if the analyst correctly
-            determined no action was needed.
+            APPROVE if: conservative, data-grounded, proportionate. No-trade plans are valid.
 
-            Start your response with exactly APPROVED or REJECTED, then explain why briefly."""),
+            OUTPUT FORMAT (strictly follow this, total response under 50 words):
+            DECISION: APPROVED or REJECTED
+            REASON: one sentence explaining why
+            FEEDBACK: (only if REJECTED) one specific fix the analyst must make"""),
             HumanMessage(content=conversation_text),
         ])
         print(f"[RISK] Response: {response.content}")
+
         approved = "APPROVED" in response.content.upper()
         retry_count = state.get("retry_count", 0)
-        # Get accumulated errors from previous retries
-        previous_errors = state.get("rejection_list", [])
-        result: Dict[str, Any] = {"risk_approval": approved, "retry_count": retry_count + 1}
-        print(f"[RISK] Response: {response.content}")
+
+        # Parse structured output
+        risk_note = ""
+        risk_feedback_text = ""
+        for line in response.content.strip().splitlines():
+            line = line.strip()
+            if line.upper().startswith("REASON:"):
+                risk_note = line.split(":", 1)[-1].strip()
+            elif line.upper().startswith("FEEDBACK:"):
+                risk_feedback_text = line.split(":", 1)[-1].strip()
+
+        result: Dict[str, Any] = {
+            "risk_approved": approved,
+            "risk_note": risk_note,
+            "retry_count": retry_count + 1,
+        }
 
         if not approved:
-            # Extract clean reasons from this rejection
-            new_reasons = extract_rejection_reasons(response.content)
-            
-            # Accumulate across retries
-            all_reasons = previous_errors + new_reasons
-            
-            # Store for next retry
-            result["rejection_list"] = all_reasons
-            
-            # Build clean feedback message
-            reasons_text = "\n".join(f"- {r}" for r in all_reasons)
-            
-            result["messages"] = [HumanMessage(
-                content=(
-                    f"RISK MANAGER FEEDBACK "
-                    f"(attempt {retry_count + 1}/{MAX_RETRIES}): REJECTED.\n\n"
-                    f"You must fix ALL of these issues:\n"
-                    f"{reasons_text}\n\n"
-                    f"Revise your trade plan addressing each point above."
-                )
-            )]
-        
+            result["risk_feedback"] = risk_feedback_text or risk_note
+
         return result
 
     # ── Routing ────────────────────────────────────────────────────────────────
@@ -169,7 +260,7 @@ async def run_analysis(goal: str, user_id: str, mcp_holder: Dict[str, Any]) -> D
         return "execute_tools" if has_tools else "audit_risk"
 
     def route_risk(state: PortfolioState):
-        if state.get("risk_approval", False):
+        if state.get("risk_approved", False):
             print("[ROUTE] risk → END (approved)")
             return END
         if state.get("retry_count", 0) >= MAX_RETRIES:
@@ -190,7 +281,15 @@ async def run_analysis(goal: str, user_id: str, mcp_holder: Dict[str, Any]) -> D
     graph = workflow.compile()
 
     # ── Run ────────────────────────────────────────────────────────────────────
-    final_state = await graph.ainvoke({"messages": [("user", goal)], "retry_count": 0})
+    final_state = await graph.ainvoke({
+        "messages": [("user", goal)],
+        "portfolio_snapshot": {},
+        "live_prices": {},
+        "retry_count": 0,
+        "risk_approved": False,
+        "risk_feedback": "",
+        "risk_note": "",
+    })
 
     last_analyst_content = ""
     for msg in reversed(final_state["messages"]):
@@ -202,27 +301,34 @@ async def run_analysis(goal: str, user_id: str, mcp_holder: Dict[str, Any]) -> D
     if not block_found:
         proposed_trades = extract_trades_via_llm(last_analyst_content)
 
+    risk_approved = final_state.get("risk_approved", False)
+
+    # Distinguish why there are no trades:
+    # - analyst_no_trade: analyst explicitly concluded nothing is needed (approved, empty trades)
+    # - retries_exhausted: auditor kept rejecting, loop hit MAX_RETRIES
+    no_trade_reason = None
+    if not proposed_trades:
+        if risk_approved:
+            no_trade_reason = "analyst_no_trade"
+        else:
+            no_trade_reason = "retries_exhausted"
+
     return {
         "decision_summary": last_analyst_content,
-        "risk_approved": final_state.get("risk_approval", False),
+        "risk_approved": risk_approved,
+        "risk_note": final_state.get("risk_note", ""),
         "proposed_trades": proposed_trades,
         "retry_count": final_state.get("retry_count", 0),
+        "no_trade_reason": no_trade_reason,
     }
 
-# ── Helper methods ─────────────────────────────────────────────────────────
+
+# ── Helper ─────────────────────────────────────────────────────────────────────
 def extract_rejection_reasons(risk_response: str) -> list[str]:
-    lines = risk_response.strip().split("\n")
     reasons = []
-    
-    for line in lines:
+    for line in risk_response.strip().split("\n"):
         line = line.strip()
-        # Skip the REJECTED line itself
-        if not line or line.upper().startswith("REJECTED"):
-            continue
-        # Skip very short lines
-        if len(line) < 10:
+        if not line or line.upper().startswith("REJECTED") or len(line) < 10:
             continue
         reasons.append(line)
-    
-    # Return max 3 most important reasons
-    return reasons[:3] 
+    return reasons[:3]

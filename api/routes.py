@@ -136,34 +136,42 @@ async def analyze(req: AnalyzeRequest):
             db, req.session_id, req.user_id, result["proposed_trades"]
         )
 
+        risk_status = "APPROVED" if result["risk_approved"] else "REJECTED"
+        risk_note   = result.get("risk_note", "")
+
         if not result["risk_approved"]:
-            # No trades proposed → analyst concluded the portfolio is already in good shape
-            if not result["proposed_trades"]:
-                friendly_summary = (
-                    "Your portfolio looks good as it stands. "
-                    "No changes are needed to meet your goal right now."
-                )
-            # Trades were proposed but risk auditor rejected them after all retries
-            else:
-                friendly_summary = (
-                    "The analysis could not produce a safe plan for your goal. "
-                    "The proposed actions were flagged as too risky or outside the supported parameters. "
-                    "Try rephrasing your goal or adjusting the scope."
-                )
             return {
                 "session_id": req.session_id,
                 "mode": req.mode,
-                "decision_summary": friendly_summary,
+                "status": risk_status,
+                "decision_summary": result["decision_summary"],
+                "risk_note": risk_note,
                 "risk_approved": False,
                 "retry_count": result["retry_count"],
                 "proposed_trades": [],
             }
 
+        # Approved, no trades — portfolio healthy or goal already met
+        if result.get("no_trade_reason") == "analyst_no_trade":
+            return {
+                "session_id": req.session_id,
+                "mode": req.mode,
+                "status": risk_status,
+                "decision_summary": result["decision_summary"],
+                "risk_note": risk_note,
+                "risk_approved": True,
+                "retry_count": result["retry_count"],
+                "proposed_trades": [],
+            }
+
+        # Approved with trades
         return {
             "session_id": req.session_id,
             "mode": req.mode,
+            "status": risk_status,
             "decision_summary": result["decision_summary"],
-            "risk_approved": result["risk_approved"],
+            "risk_note": risk_note,
+            "risk_approved": True,
             "retry_count": result["retry_count"],
             "proposed_trades": proposed_rows,
         }
