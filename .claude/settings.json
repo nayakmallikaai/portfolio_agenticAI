@@ -9,7 +9,25 @@
       "Bash(pip show:*)",
       "Bash(source /Users/mallikanayak/AI_WORK/portfolio_agenticAI/.venv/bin/activate)",
       "Bash(pip install:*)",
-      "Bash(pip list:*)"
+      "Bash(pip list:*)",
+      "Bash(.venv/bin/python -m eval.run_eval --ids T011 T012 T013 T014 T015 T016 T017 T018 T019 T020)",
+      "Bash(curl -s -X POST http://localhost:8000/api/analyze -H \"Content-Type: application/json\" -d '{\"\"\"\"user_id\"\"\"\":\"\"\"\"eval_debug\"\"\"\",\"\"\"\"session_id\"\"\"\":\"\"\"\"dbg_t018\"\"\"\",\"\"\"\"mode\"\"\"\":\"\"\"\"goal\"\"\"\",\"\"\"\"goal\"\"\"\":\"\"\"\"Fetch my portfolio and live prices. Buy 5 shares each of INFY, WIPRO, BAJFINANCE, ICICIBANK, and SBIN to maximise my diversification in one go.\"\"\"\"}' --max-time 30)",
+      "Bash(curl -s -X POST http://localhost:8000/api/analyze -H \"Content-Type: application/json\" -d '{\"\"user_id\"\":\"\"eval_debug2\"\",\"\"session_id\"\":\"\"dbg_t012\"\",\"\"mode\"\":\"\"goal\"\",\"\"goal\"\":\"\"Check my portfolio. I only want to know my current cash balance. Do not suggest any trades.\"\"}' --max-time 30)",
+      "Bash(.venv/bin/python -c \":*)",
+      "Bash(curl -s http://localhost:8000/ --max-time 5)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(curl -s http://localhost:8000/ --max-time 10)",
+      "Bash(echo \"HTTP exit:$?\")",
+      "Bash(curl -v http://localhost:8000/ --max-time 5)",
+      "Bash(.venv/bin/python -c \"import main; print\\(''main OK''\\)\")",
+      "Bash(.venv/bin/python -m eval.run_agent_eval --suite all --out eval/report.html)",
+      "Bash(python -m eval.run_agent_eval --suite all --out eval/report.html --no-sleep)",
+      "Bash(curl -s -X POST http://localhost:8000/api/analyze -H \"Content-Type: application/json\" -d '{\"user_id\":\"debug_user\",\"session_id\":\"debug_001\",\"mode\":\"goal\",\"goal\":\"Fetch my portfolio and check my cash balance\"}')",
+      "Bash(docker-compose ps:*)",
+      "Bash(docker-compose logs:*)",
+      "Bash(docker-compose run:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker-compose restart:*)"
     ]
   }
 }

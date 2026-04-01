@@ -112,7 +112,7 @@ async def analyze(req: AnalyzeRequest):
     is_valid, error_msg = validate_goal(effective_goal)
     
     if not is_valid:
-        return {"decision_summary": error_msg, "risk_approved": False, "proposed_trades": []}
+        return {"decision_summary": error_msg, "risk_approved": False, "proposed_trades": [], "tool_calls_log": []}
 
     db = SessionLocal()
     try:
@@ -139,6 +139,8 @@ async def analyze(req: AnalyzeRequest):
         risk_status = "APPROVED" if result["risk_approved"] else "REJECTED"
         risk_note   = result.get("risk_note", "")
 
+        tool_calls_log = result.get("tool_calls_log", [])
+
         if not result["risk_approved"]:
             return {
                 "session_id": req.session_id,
@@ -149,6 +151,7 @@ async def analyze(req: AnalyzeRequest):
                 "risk_approved": False,
                 "retry_count": result["retry_count"],
                 "proposed_trades": [],
+                "tool_calls_log": tool_calls_log,
             }
 
         # Approved, no trades — portfolio healthy or goal already met
@@ -162,6 +165,7 @@ async def analyze(req: AnalyzeRequest):
                 "risk_approved": True,
                 "retry_count": result["retry_count"],
                 "proposed_trades": [],
+                "tool_calls_log": tool_calls_log,
             }
 
         # Approved with trades
@@ -174,6 +178,7 @@ async def analyze(req: AnalyzeRequest):
             "risk_approved": True,
             "retry_count": result["retry_count"],
             "proposed_trades": proposed_rows,
+            "tool_calls_log": tool_calls_log,
         }
     finally:
         db.close()

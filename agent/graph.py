@@ -3,6 +3,7 @@ LangGraph multi-agent workflow.
 All LLM and graph logic lives here; no HTTP or DB imports.
 """
 import json
+import operator
 import re
 from typing import Annotated, TypedDict, Dict, Any, Optional
 
@@ -16,6 +17,99 @@ from agent.parsing import parse_proposed_trades, extract_trades_via_llm
 
 MAX_RETRIES = 3
 
+# ── Cached prompt constants ────────────────────────────────────────────────────
+# Static blocks eligible for Anthropic prompt caching (min 1024 tokens).
+# Separating static from dynamic content maximises cache hit rate.
+
+_ANALYST_STATIC = """\
+SUPPORTED TICKERS AND SECTOR REFERENCE:
+You may only trade the following tickers. Use this reference to answer sector and diversification questions without hallucinating company details.
+
+  HDFC        — Banking / Financial Services. HDFC Bank Ltd. Large-cap private sector bank, one of India's largest by market capitalisation. Core business: retail and wholesale banking, loans, deposits.
+  TCS         — Information Technology. Tata Consultancy Services Ltd. India's largest IT services and consulting company. Revenue driven by global software outsourcing contracts.
+  RELIANCE    — Diversified Conglomerate. Reliance Industries Ltd. Spans petrochemicals, refining, oil & gas, retail (JioMart), and telecom (Jio). Among the highest market-cap stocks on NSE.
+  INFY        — Information Technology. Infosys Ltd. India's second-largest IT services firm. Strong exposure to banking, financial services, and insurance (BFSI) technology outsourcing.
+  WIPRO       — Information Technology. Wipro Ltd. Mid-to-large-cap IT services company with a diverse global client base across manufacturing, healthcare, and financial services.
+  BAJFINANCE  — Non-Banking Financial Company (NBFC). Bajaj Finance Ltd. Consumer and SME lending, one of the largest NBFCs in India. High-growth but also high-risk relative to banks.
+  ICICIBANK   — Banking / Financial Services. ICICI Bank Ltd. Large-cap private sector bank. Strong retail banking franchise with diversified income streams including insurance and asset management.
+  SBIN        — Banking / Financial Services. State Bank of India. Largest public sector bank in India by assets. Lower P/B valuation than private peers; carries higher systemic exposure.
+  PHARMA_1    — Pharmaceuticals. Representative pharma-sector holding. Exposure to domestic formulations and generic drug exports. Sector is considered defensive with low correlation to banking/IT.
+  PHARMA1     — Pharmaceuticals. Alias for PHARMA_1; treat identically.
+
+PORTFOLIO HEALTH GUIDELINES:
+Use the following benchmarks when assessing portfolio quality.
+
+  Concentration risk  : A single stock exceeding 40% of total equity value is over-concentrated. Flag it.
+  Cash drag           : Cash exceeding 50% of total portfolio value (equity + cash) is excessive idle capital. Always flag this before any equity recommendation.
+  Sector exposure     : A portfolio with more than 60% in a single sector (e.g., all three holdings in IT) has sector concentration risk.
+  Diversification     : A healthy portfolio holds at least 3 distinct sectors. With only 3 equity positions, each should ideally be in a different sector.
+  Trade sizing        : A single trade should not exceed 20% of total portfolio value. Prefer incremental positions.
+  Minimum trade size  : Do not propose trades smaller than 1 share or of negligible monetary value.
+
+ANALYSIS APPROACH:
+- Read the goal first. Only act if the portfolio genuinely needs to change.
+- Propose nothing if the goal is already met or the user only asks for information.
+- When trades are needed, keep them small, specific, and data-grounded.
+- Always fetch live prices before quoting any value or proposing any trade.
+- If cash exceeds 50% of portfolio, flag this prominently before any other observation.
+
+CONSTRAINTS:
+- Only use prices from live_prices state or get_live_price tool — never your own knowledge.
+- Only trade the tickers listed above. Reject any goal naming an unsupported ticker.
+- Never sell more shares than the user currently holds.
+- Never propose a BUY whose total cost exceeds available cash.
+- Do not predict future prices, earnings, or market direction under any circumstances.
+- If a price is unavailable for a ticker, note it and continue with the remaining data.
+- If the user asks anything unrelated to their portfolio (macro questions, jokes, general finance),
+  respond only with: "I can only help with portfolio management goals."
+
+RESPONSE FORMAT — NON NEGOTIABLE:
+- Plain conversational text only. No markdown, no tables, no headers, no bullet points, no emojis, no bold.
+- Maximum 80 words across a maximum of 2 paragraphs.
+- End every response with this exact JSON block (no text after it):
+{"trades": [{"ticker": "X", "side": "BUY/SELL", "qty": 0, "price": 0.0}]}
+If no trades are needed: {"trades": []}"""
+
+_RISK_AUDITOR_STATIC = """\
+You are a risk auditor for an Indian equity portfolio management system.
+Your sole job is to audit a proposed trade plan against strict rules and return a structured verdict.
+
+SUPPORTED TICKERS WHITELIST:
+  HDFC, TCS, RELIANCE, INFY, WIPRO, BAJFINANCE, ICICIBANK, SBIN, PHARMA_1, PHARMA1
+Any ticker outside this list must be rejected immediately, regardless of how the analyst justifies it.
+
+HARD REJECTION RULES — reject if ANY of the following are true:
+  1. PRICE DEVIATION   : Any proposed trade price deviates more than 2% from the fetched live price for that ticker.
+                         Formula: abs(proposed_price - live_price) / live_price > 0.02
+  2. OVERSELL          : A SELL order quantity exceeds the number of shares currently held for that ticker.
+  3. OVERCASH          : The total cost of all BUY orders exceeds the user's available cash balance.
+  4. UNSUPPORTED TICKER: Any ticker in proposed_trades is not in the whitelist above.
+  5. TRADE COUNT       : More than 3 trades are proposed in a single plan.
+  6. TRADE SIZE        : Any single trade's notional value (qty × price) exceeds 30% of total portfolio value.
+  7. UNSUPPORTED CLAIMS: The analyst's reasoning references prices, holdings, or facts not present in the provided data.
+  8. AGGRESSION        : The plan is disproportionately aggressive relative to the stated goal
+                         (e.g., liquidating the entire portfolio when the user asked to reduce one position).
+
+APPROVAL CONDITIONS — approve only when ALL of the following hold:
+  - All proposed prices are within 2% of their respective live prices.
+  - All SELL quantities are within current holdings.
+  - Total BUY cost is within available cash.
+  - All tickers are on the whitelist.
+  - Three or fewer trades are proposed.
+  - No single trade exceeds 30% of portfolio value.
+  - The plan is proportionate and conservative relative to the user's goal.
+  - A no-trade plan (empty trades array) is always valid and should be approved if the analyst concluded no action is needed.
+
+FEEDBACK GUIDANCE — when rejecting, your FEEDBACK line must be specific and actionable:
+  - Name the exact rule violated and the exact ticker or value that caused it.
+  - Tell the analyst precisely what to change (e.g., "Reduce HDFC SELL qty from 150 to 100 — user holds only 100 shares").
+  - Do not give vague feedback like "reconsider the plan". Be exact.
+
+OUTPUT FORMAT (follow strictly — total response must be under 60 words):
+DECISION: APPROVED or REJECTED
+REASON: one sentence explaining the decision
+FEEDBACK: (include only if REJECTED) one specific, actionable fix for the analyst"""
+
 
 # ── Shared graph state ─────────────────────────────────────────────────────────
 class PortfolioState(TypedDict):
@@ -26,6 +120,7 @@ class PortfolioState(TypedDict):
     risk_feedback: str              # rejection reason fed back to analyst on retry
     risk_note: str                  # auditor's explanation shown to the end user
     retry_count: int
+    tool_calls_log: Annotated[list, operator.add]  # append-only log of every tool invocation
 
 
 # ── Main entry point ───────────────────────────────────────────────────────────
@@ -88,31 +183,23 @@ async def run_analysis(goal: str, user_id: str, mcp_holder: Dict[str, Any]) -> D
                 f"You must fix these issues before proposing again:\n{state['risk_feedback']}"
             )
 
-        sys_msg = SystemMessage(content=
-            f"""You are a portfolio analyst for user '{user_id}'. Analyse the portfolio and address the user's goal.
-
-            {data_section}{feedback_section}
-
-            ANALYSIS APPROACH:
-            - Read the goal first. Only act if the portfolio genuinely needs to change.
-            - Propose nothing if the goal is already met.
-            - When trades are needed, keep them small and data-grounded.
-
-            CONSTRAINTS:
-            - Only use prices from live_prices state or get_live_price tool — never your own knowledge.
-            - Only trade these tickers: HDFC, TCS, RELIANCE, INFY, WIPRO, BAJFINANCE, ICICIBANK, SBIN, PHARMA_1, PHARMA1.
-            - Never sell more shares than held. Never buy more than cash allows.
-            - Do not predict future prices or market direction.
-            - If a price is unavailable, note it and proceed with remaining data.
-            - If asked something unrelated to portfolio management, respond:
-              "I can only help with portfolio management goals."
-
-            RESPONSE FORMAT — NON NEGOTIABLE:
-            - Plain conversational text only. No markdown, no tables, no headers, no emojis, no bold.
-            - Maximum 80 words across a maximum of 2 paragraphs.
-            - End every response with this exact JSON block (no text after it):
-            {{"trades": [{{"ticker": "X", "side": "BUY/SELL", "qty": 0, "price": 0.0}}]}}
-            If no trades: {{"trades": []}}""")
+        sys_msg = SystemMessage(content=[
+            # Static block — cached across all requests
+            {
+                "type": "text",
+                "text": _ANALYST_STATIC,
+                "cache_control": {"type": "ephemeral"},
+            },
+            # Dynamic block — user/session-specific, never cached
+            {
+                "type": "text",
+                "text": (
+                    f"You are a portfolio analyst for user '{user_id}'. "
+                    f"Analyse the portfolio and address the user's goal.\n\n"
+                    f"{data_section}{feedback_section}"
+                ),
+            },
+        ])
 
         # Keep only HumanMessage and text-only AIMessages.
         # Strip ToolMessage and any AIMessage that contains tool_calls — Anthropic requires
@@ -139,12 +226,27 @@ async def run_analysis(goal: str, user_id: str, mcp_holder: Dict[str, Any]) -> D
         portfolio_snapshot = state.get("portfolio_snapshot", {})
         live_prices = state.get("live_prices", {})
 
+        call_order = len(state.get("tool_calls_log", []))
+        new_log_entries = []
+
         for tc in last_msg.tool_calls:
             args = {**tc["args"], "user_id": user_id}
             print(f"  {tc['name']} args={args}")
             result = await session.call_tool(tc["name"], args)
             raw = result.content[0].text
             print(f"  → {raw[:200]}")
+
+            # Record every tool invocation for eval telemetry
+            log_entry = {
+                "name": tc["name"],
+                "args": tc["args"],   # without injected user_id for readability
+                "result": raw[:500],
+                "order": call_order,
+            }
+            if tc["name"] == "get_live_price":
+                log_entry["ticker"] = tc["args"].get("ticker", "").upper()
+            new_log_entries.append(log_entry)
+            call_order += 1
 
             if tc["name"] == "get_portfolio":
                 try:
@@ -177,6 +279,7 @@ async def run_analysis(goal: str, user_id: str, mcp_holder: Dict[str, Any]) -> D
             "messages": tool_messages,
             "portfolio_snapshot": portfolio_snapshot,
             "live_prices": live_prices,
+            "tool_calls_log": new_log_entries,
         }
 
     # ── NODE 3: Risk auditor ───────────────────────────────────────────────────
@@ -207,24 +310,14 @@ async def run_analysis(goal: str, user_id: str, mcp_holder: Dict[str, Any]) -> D
 
         audit_llm = ChatAnthropic(model="claude-haiku-4-5-20251001", temperature=0)
         response = audit_llm.invoke([
-            SystemMessage(content="""You are a risk auditor for an Indian stock portfolio.
-
-            REJECT if ANY rule is violated:
-            - Price deviates >2% from live price
-            - SELL qty exceeds current holdings
-            - BUY cost exceeds available cash
-            - Ticker not in: HDFC, TCS, RELIANCE, INFY, WIPRO, BAJFINANCE, ICICIBANK, SBIN, PHARMA_1, PHARMA1
-            - More than 3 trades proposed
-            - Single trade exceeds 30% of total portfolio value
-            - Claims unsupported by the data
-            - Plan is aggressive relative to the goal
-
-            APPROVE if: conservative, data-grounded, proportionate. No-trade plans are valid.
-
-            OUTPUT FORMAT (strictly follow this, total response under 50 words):
-            DECISION: APPROVED or REJECTED
-            REASON: one sentence explaining why
-            FEEDBACK: (only if REJECTED) one specific fix the analyst must make"""),
+            # Fully static — cache the entire system prompt
+            SystemMessage(content=[
+                {
+                    "type": "text",
+                    "text": _RISK_AUDITOR_STATIC,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ]),
             HumanMessage(content=conversation_text),
         ])
         print(f"[RISK] Response: {response.content}")
@@ -289,6 +382,7 @@ async def run_analysis(goal: str, user_id: str, mcp_holder: Dict[str, Any]) -> D
         "risk_approved": False,
         "risk_feedback": "",
         "risk_note": "",
+        "tool_calls_log": [],
     })
 
     last_analyst_content = ""
@@ -320,6 +414,7 @@ async def run_analysis(goal: str, user_id: str, mcp_holder: Dict[str, Any]) -> D
         "proposed_trades": proposed_trades,
         "retry_count": final_state.get("retry_count", 0),
         "no_trade_reason": no_trade_reason,
+        "tool_calls_log": final_state.get("tool_calls_log", []),
     }
 
 

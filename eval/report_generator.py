@@ -1,0 +1,375 @@
+"""
+HTML report generator for the unified portfolio agent evaluation suite.
+
+Produces a single self-contained HTML file with:
+  - Run metadata header
+  - Metric scorecard (8 category scores + 3 LLM metrics + 3 efficiency metrics)
+  - Radar chart (Chart.js) for category scores
+  - Bar chart for per-test pass/fail
+  - Detailed per-test result table with expandable check rows
+"""
+import json
+from datetime import datetime, timezone
+from typing import List, Dict, Any
+
+from eval.agent_evaluator import CaseResult, compute_metrics
+
+
+# ── Colour helpers ────────────────────────────────────────────────────────────
+
+def _score_colour(score: str) -> str:
+    return {"PASS": "#22c55e", "FAIL": "#ef4444", "ERROR": "#f59e0b"}.get(score, "#94a3b8")
+
+
+def _pct_colour(v: float) -> str:
+    if v is None:
+        return "#94a3b8"
+    if v >= 0.8:
+        return "#22c55e"
+    if v >= 0.6:
+        return "#f59e0b"
+    return "#ef4444"
+
+
+def _fmt_pct(v) -> str:
+    if v is None:
+        return "N/A"
+    return f"{round(v * 100)}%"
+
+
+def _fmt_num(v, decimals=1) -> str:
+    if v is None:
+        return "N/A"
+    return f"{v:.{decimals}f}"
+
+
+# ── Section builders ──────────────────────────────────────────────────────────
+
+def _metric_card(label: str, value: str, colour: str, subtitle: str = "") -> str:
+    return f"""
+    <div class="metric-card">
+      <div class="metric-label">{label}</div>
+      <div class="metric-value" style="color:{colour}">{value}</div>
+      {"<div class='metric-sub'>" + subtitle + "</div>" if subtitle else ""}
+    </div>"""
+
+
+def _build_scorecard(metrics: Dict[str, Any]) -> str:
+    cards = []
+
+    # Overall
+    ov = metrics.get("overall_score")
+    cards.append(_metric_card(
+        "Overall Score", _fmt_pct(ov), _pct_colour(ov),
+        f"{metrics['pass_count']} / {metrics['total_count']} tests passed",
+    ))
+
+    # Category scores
+    for key, label in [
+        ("guardrail_score",       "Guardrail"),
+        ("tool_call_score",       "Tool Call"),
+        ("retry_score",           "Retry Loop"),
+        ("price_grounding_score", "Price Grounding"),
+        ("faithfulness_score",    "Faithfulness"),
+    ]:
+        v = metrics.get(key)
+        cards.append(_metric_card(label, _fmt_pct(v), _pct_colour(v) if v is not None else "#94a3b8"))
+
+    # LLM eval metrics
+    for key, label in [
+        ("avg_context_precision", "Avg Context Precision"),
+        ("avg_context_recall",    "Avg Context Recall"),
+        ("avg_answer_relevance",  "Avg Answer Relevance"),
+    ]:
+        v = metrics.get(key)
+        cards.append(_metric_card(label, _fmt_pct(v), _pct_colour(v) if v is not None else "#94a3b8",
+                                  "LLM eval metric"))
+
+    # Efficiency
+    cards.append(_metric_card("Avg Tool Calls",    _fmt_num(metrics.get("avg_tool_calls")),    "#60a5fa", "per test"))
+    cards.append(_metric_card("Avg Retries",       _fmt_num(metrics.get("avg_retry_count")),   "#a78bfa", "per test"))
+    cards.append(_metric_card("Avg Response Time", _fmt_num(metrics.get("avg_response_time_s")) + "s", "#34d399", "per test"))
+
+    return "<div class='scorecard'>" + "".join(cards) + "</div>"
+
+
+def _build_radar_data(metrics: Dict[str, Any]) -> str:
+    labels = ["Guardrail", "Tool Call", "Retry", "Grounding", "Faithfulness", "Precision", "Recall", "Relevance"]
+    values = [
+        round((metrics.get("guardrail_score")       or 0) * 100),
+        round((metrics.get("tool_call_score")        or 0) * 100),
+        round((metrics.get("retry_score")            or 0) * 100),
+        round((metrics.get("price_grounding_score")  or 0) * 100),
+        round((metrics.get("faithfulness_score")     or 0) * 100),
+        round((metrics.get("avg_context_precision")  or 0) * 100),
+        round((metrics.get("avg_context_recall")     or 0) * 100),
+        round((metrics.get("avg_answer_relevance")   or 0) * 100),
+    ]
+    return json.dumps({"labels": labels, "values": values})
+
+
+def _build_per_test_bar_data(results: List[CaseResult]) -> str:
+    labels = [r.test_id for r in results]
+    colours = [_score_colour(r.score) for r in results]
+    values = [1 if r.score == "PASS" else 0 for r in results]
+    return json.dumps({"labels": labels, "colours": colours, "values": values})
+
+
+def _build_test_rows(results: List[CaseResult]) -> str:
+    rows = []
+    for r in results:
+        score_badge = (
+            f'<span class="badge" style="background:{_score_colour(r.score)}20;'
+            f'color:{_score_colour(r.score)};border:1px solid {_score_colour(r.score)}40">'
+            f'{r.score}</span>'
+        )
+
+        # Per-case numeric metrics
+        cp  = _fmt_pct(r.context_precision)
+        cr  = _fmt_pct(r.context_recall)
+        ar  = _fmt_pct(r.answer_relevance)
+        tc  = str(r.tool_calls_count)
+        rt  = str(r.retry_count)
+        ela = f"{r.elapsed_s}s"
+
+        # Check detail rows
+        check_rows = ""
+        for cr_item in r.check_results:
+            icon = "✓" if cr_item.passed else "✗"
+            icon_col = "#22c55e" if cr_item.passed else "#ef4444"
+            cat_badge = f'<span class="cat-badge cat-{cr_item.check_category}">{cr_item.check_category}</span>'
+            check_rows += f"""
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:{icon_col};font-weight:700">{icon}</span>
+                  {cat_badge} {cr_item.check_description}
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">{cr_item.reason}</td>
+              </tr>"""
+
+        if r.error:
+            check_rows += f"""
+              <tr class="check-row">
+                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: {r.error}</td>
+              </tr>"""
+
+        rows.append(f"""
+          <tr class="test-row" onclick="toggleChecks('{r.test_id}')">
+            <td><code>{r.test_id}</code></td>
+            <td>{score_badge}</td>
+            <td style="max-width:300px;font-size:0.85rem">{r.description}</td>
+            <td style="color:#60a5fa">{cp}</td>
+            <td style="color:#a78bfa">{cr}</td>
+            <td style="color:#34d399">{ar}</td>
+            <td>{tc}</td>
+            <td>{rt} / {ela}</td>
+          </tr>
+          <tbody id="checks-{r.test_id}" style="display:none">{check_rows}</tbody>""")
+
+    return "".join(rows)
+
+
+# ── Main entry point ──────────────────────────────────────────────────────────
+
+def generate_report(
+    results: List[CaseResult],
+    output_path: str = "eval/report.html",
+    suite_label: str = "Portfolio Agent — Full Evaluation Suite",
+) -> str:
+    metrics   = compute_metrics(results)
+    scorecard = _build_scorecard(metrics)
+    radar_data = _build_radar_data(metrics)
+    bar_data   = _build_per_test_bar_data(results)
+    test_rows  = _build_test_rows(results)
+    run_time   = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>{suite_label}</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  *,*::before,*::after{{box-sizing:border-box;margin:0;padding:0}}
+  body{{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+        background:#0f1117;color:#e2e8f0;padding:32px 16px;min-height:100vh}}
+  h1{{text-align:center;font-size:1.5rem;font-weight:700;color:#f8fafc;margin-bottom:4px}}
+  .subtitle{{text-align:center;font-size:0.85rem;color:#64748b;margin-bottom:32px}}
+  .section-title{{font-size:0.8rem;font-weight:600;color:#64748b;text-transform:uppercase;
+                  letter-spacing:.5px;margin:28px 0 12px}}
+  .container{{max-width:1200px;margin:0 auto}}
+
+  /* Scorecard */
+  .scorecard{{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:8px}}
+  .metric-card{{background:#1e2130;border:1px solid #2d3148;border-radius:10px;
+                padding:16px 20px;min-width:140px;flex:1}}
+  .metric-label{{font-size:0.75rem;color:#64748b;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px}}
+  .metric-value{{font-size:1.6rem;font-weight:700}}
+  .metric-sub{{font-size:0.75rem;color:#64748b;margin-top:4px}}
+
+  /* Charts */
+  .charts{{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:28px}}
+  .chart-card{{background:#1e2130;border:1px solid #2d3148;border-radius:10px;
+               padding:20px;flex:1;min-width:300px}}
+  .chart-card h3{{font-size:0.85rem;color:#94a3b8;margin-bottom:14px}}
+
+  /* Table */
+  .table-wrap{{background:#1e2130;border:1px solid #2d3148;border-radius:10px;
+               overflow:hidden;margin-bottom:28px}}
+  table{{width:100%;border-collapse:collapse;font-size:0.875rem}}
+  thead th{{padding:10px 14px;background:#161826;color:#64748b;font-size:0.75rem;
+            text-transform:uppercase;letter-spacing:.4px;font-weight:600;text-align:left}}
+  .test-row td{{padding:10px 14px;border-bottom:1px solid #1a1d2e;cursor:pointer}}
+  .test-row:hover td{{background:#252840}}
+  .check-row td{{padding:7px 14px;border-bottom:1px solid #161826;background:#13151f}}
+  .badge{{display:inline-block;padding:3px 10px;border-radius:99px;font-size:0.78rem;font-weight:600}}
+  .cat-badge{{display:inline-block;padding:1px 7px;border-radius:4px;font-size:0.72rem;
+              font-weight:600;margin-right:4px}}
+  .cat-tool_call{{background:#1e3a5f;color:#60a5fa}}
+  .cat-retry{{background:#2d1b6b;color:#a78bfa}}
+  .cat-grounding{{background:#1a3a2a;color:#34d399}}
+  .cat-precision{{background:#3a2a1a;color:#fb923c}}
+  .cat-recall{{background:#3a1a2a;color:#f472b6}}
+  .cat-relevance{{background:#1a3a3a;color:#2dd4bf}}
+  .cat-faithfulness{{background:#2a3a1a;color:#a3e635}}
+  .cat-guardrail{{background:#3a1a1a;color:#f87171}}
+  .cat-general{{background:#2d3148;color:#94a3b8}}
+
+  code{{background:#161826;padding:2px 6px;border-radius:4px;font-size:0.82rem;color:#93c5fd}}
+
+  /* LLM metrics legend */
+  .legend{{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px}}
+  .legend-item{{font-size:0.78rem;color:#94a3b8;display:flex;align-items:center;gap:6px}}
+  .legend-dot{{width:10px;height:10px;border-radius:50%}}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>{suite_label}</h1>
+  <div class="subtitle">Run at {run_time} &nbsp;·&nbsp;
+    {metrics['total_count']} tests &nbsp;·&nbsp;
+    <span style="color:#22c55e">{metrics['pass_count']} passed</span> &nbsp;·&nbsp;
+    <span style="color:#ef4444">{metrics.get('fail_count',0)} failed</span> &nbsp;·&nbsp;
+    <span style="color:#f59e0b">{metrics.get('error_count',0)} errors</span>
+  </div>
+
+  <div class="section-title">Metric Scorecard</div>
+  {scorecard}
+
+  <div class="section-title">Charts</div>
+  <div class="charts">
+    <div class="chart-card" style="max-width:420px">
+      <h3>Category Scores (Radar)</h3>
+      <canvas id="radarChart" height="320"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Per-Test Pass / Fail</h3>
+      <canvas id="barChart" height="320"></canvas>
+    </div>
+  </div>
+
+  <div class="section-title">Test Results</div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#60a5fa"></div>Context Precision</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div>Context Recall</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#34d399"></div>Answer Relevance</div>
+    <div class="legend-item" style="color:#64748b">Click a row to expand checks</div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>Score</th><th>Description</th>
+          <th style="color:#60a5fa">Precision</th>
+          <th style="color:#a78bfa">Recall</th>
+          <th style="color:#34d399">Relevance</th>
+          <th>Tools</th><th>Retries / Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {test_rows}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-title">Metric Definitions</div>
+  <div style="background:#1e2130;border:1px solid #2d3148;border-radius:10px;padding:20px;font-size:0.83rem;line-height:1.8;color:#94a3b8">
+    <b style="color:#e2e8f0">Context Precision</b> — tickers_used_in_summary ÷ tickers_fetched_via_tool. High = analyst fetched only what it needed.<br>
+    <b style="color:#e2e8f0">Context Recall</b> — holdings_mentioned_in_summary ÷ total_holdings. High = analyst covered the whole portfolio.<br>
+    <b style="color:#e2e8f0">Answer Relevance</b> — financial signal word density in the summary (normalised 0–1).<br>
+    <b style="color:#e2e8f0">Price Grounding</b> — % of proposed trade prices within 2% of fetched live price (mirrors risk auditor rule).<br>
+    <b style="color:#e2e8f0">Faithfulness</b> — every ticker in proposed_trades had its price fetched via tool (no hallucinated tickers).<br>
+    <b style="color:#e2e8f0">Guardrail</b> — % of guardrail checks passed (ShouldReject + RiskApproved checks).<br>
+    <b style="color:#e2e8f0">Tool Call</b> — % of tool-call checks passed (ordering, count, specific ticker, off-topic suppression).<br>
+    <b style="color:#e2e8f0">Retry</b> — % of retry checks passed (convergence, exhaustion, max-retries gate).
+  </div>
+
+</div>
+
+<script>
+const radarRaw  = {radar_data};
+const barRaw    = {bar_data};
+
+// ── Radar chart ──────────────────────────────────────────────────────────────
+new Chart(document.getElementById("radarChart"), {{
+  type: "radar",
+  data: {{
+    labels: radarRaw.labels,
+    datasets: [{{
+      label: "Score %",
+      data: radarRaw.values,
+      backgroundColor: "rgba(99,102,241,0.15)",
+      borderColor: "#6366f1",
+      pointBackgroundColor: "#6366f1",
+      pointRadius: 4,
+    }}],
+  }},
+  options: {{
+    responsive: true,
+    scales: {{
+      r: {{
+        min: 0, max: 100, ticks: {{ stepSize: 25, color: "#4b5563", backdropColor: "transparent" }},
+        grid: {{ color: "#2d3148" }},
+        pointLabels: {{ color: "#94a3b8", font: {{ size: 11 }} }},
+        angleLines: {{ color: "#2d3148" }},
+      }}
+    }},
+    plugins: {{ legend: {{ display: false }} }},
+  }},
+}});
+
+// ── Bar chart ─────────────────────────────────────────────────────────────────
+new Chart(document.getElementById("barChart"), {{
+  type: "bar",
+  data: {{
+    labels: barRaw.labels,
+    datasets: [{{
+      label: "Pass",
+      data: barRaw.values,
+      backgroundColor: barRaw.colours,
+    }}],
+  }},
+  options: {{
+    responsive: true,
+    scales: {{
+      y: {{ min: 0, max: 1, ticks: {{ stepSize: 1, color: "#4b5563" }}, grid: {{ color: "#2d3148" }} }},
+      x: {{ ticks: {{ color: "#94a3b8" }}, grid: {{ display: false }} }},
+    }},
+    plugins: {{ legend: {{ display: false }} }},
+  }},
+}});
+
+// ── Toggle check rows ─────────────────────────────────────────────────────────
+function toggleChecks(id) {{
+  const el = document.getElementById("checks-" + id);
+  if (el) el.style.display = el.style.display === "none" ? "" : "none";
+}}
+</script>
+</body>
+</html>"""
+
+    with open(output_path, "w") as f:
+        f.write(html)
+
+    return output_path

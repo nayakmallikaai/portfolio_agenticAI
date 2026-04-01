@@ -1,0 +1,12 @@
+.env
+.git
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+eval/report*.html
+eval/report*.json
+*.db
+.DS_Store

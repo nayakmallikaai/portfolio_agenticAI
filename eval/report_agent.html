@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Portfolio Agent — Agent Capability Suite (A001–A015)</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+        background:#0f1117;color:#e2e8f0;padding:32px 16px;min-height:100vh}
+  h1{text-align:center;font-size:1.5rem;font-weight:700;color:#f8fafc;margin-bottom:4px}
+  .subtitle{text-align:center;font-size:0.85rem;color:#64748b;margin-bottom:32px}
+  .section-title{font-size:0.8rem;font-weight:600;color:#64748b;text-transform:uppercase;
+                  letter-spacing:.5px;margin:28px 0 12px}
+  .container{max-width:1200px;margin:0 auto}
+
+  /* Scorecard */
+  .scorecard{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:8px}
+  .metric-card{background:#1e2130;border:1px solid #2d3148;border-radius:10px;
+                padding:16px 20px;min-width:140px;flex:1}
+  .metric-label{font-size:0.75rem;color:#64748b;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px}
+  .metric-value{font-size:1.6rem;font-weight:700}
+  .metric-sub{font-size:0.75rem;color:#64748b;margin-top:4px}
+
+  /* Charts */
+  .charts{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:28px}
+  .chart-card{background:#1e2130;border:1px solid #2d3148;border-radius:10px;
+               padding:20px;flex:1;min-width:300px}
+  .chart-card h3{font-size:0.85rem;color:#94a3b8;margin-bottom:14px}
+
+  /* Table */
+  .table-wrap{background:#1e2130;border:1px solid #2d3148;border-radius:10px;
+               overflow:hidden;margin-bottom:28px}
+  table{width:100%;border-collapse:collapse;font-size:0.875rem}
+  thead th{padding:10px 14px;background:#161826;color:#64748b;font-size:0.75rem;
+            text-transform:uppercase;letter-spacing:.4px;font-weight:600;text-align:left}
+  .test-row td{padding:10px 14px;border-bottom:1px solid #1a1d2e;cursor:pointer}
+  .test-row:hover td{background:#252840}
+  .check-row td{padding:7px 14px;border-bottom:1px solid #161826;background:#13151f}
+  .badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:0.78rem;font-weight:600}
+  .cat-badge{display:inline-block;padding:1px 7px;border-radius:4px;font-size:0.72rem;
+              font-weight:600;margin-right:4px}
+  .cat-tool_call{background:#1e3a5f;color:#60a5fa}
+  .cat-retry{background:#2d1b6b;color:#a78bfa}
+  .cat-grounding{background:#1a3a2a;color:#34d399}
+  .cat-precision{background:#3a2a1a;color:#fb923c}
+  .cat-recall{background:#3a1a2a;color:#f472b6}
+  .cat-relevance{background:#1a3a3a;color:#2dd4bf}
+  .cat-faithfulness{background:#2a3a1a;color:#a3e635}
+  .cat-guardrail{background:#3a1a1a;color:#f87171}
+  .cat-general{background:#2d3148;color:#94a3b8}
+
+  code{background:#161826;padding:2px 6px;border-radius:4px;font-size:0.82rem;color:#93c5fd}
+
+  /* LLM metrics legend */
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+  .legend-item{font-size:0.78rem;color:#94a3b8;display:flex;align-items:center;gap:6px}
+  .legend-dot{width:10px;height:10px;border-radius:50%}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Portfolio Agent — Agent Capability Suite (A001–A015)</h1>
+  <div class="subtitle">Run at 2026-04-01 08:26 UTC &nbsp;·&nbsp;
+    15 tests &nbsp;·&nbsp;
+    <span style="color:#22c55e">14 passed</span> &nbsp;·&nbsp;
+    <span style="color:#ef4444">1 failed</span> &nbsp;·&nbsp;
+    <span style="color:#f59e0b">0 errors</span>
+  </div>
+
+  <div class="section-title">Metric Scorecard</div>
+  <div class='scorecard'>
+    <div class="metric-card">
+      <div class="metric-label">Overall Score</div>
+      <div class="metric-value" style="color:#22c55e">93%</div>
+      <div class='metric-sub'>14 / 15 tests passed</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Guardrail</div>
+      <div class="metric-value" style="color:#22c55e">86%</div>
+      
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Tool Call</div>
+      <div class="metric-value" style="color:#22c55e">100%</div>
+      
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Retry Loop</div>
+      <div class="metric-value" style="color:#22c55e">100%</div>
+      
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Price Grounding</div>
+      <div class="metric-value" style="color:#22c55e">100%</div>
+      
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Faithfulness</div>
+      <div class="metric-value" style="color:#22c55e">100%</div>
+      
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Avg Context Precision</div>
+      <div class="metric-value" style="color:#ef4444">34%</div>
+      <div class='metric-sub'>LLM eval metric</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Avg Context Recall</div>
+      <div class="metric-value" style="color:#22c55e">84%</div>
+      <div class='metric-sub'>LLM eval metric</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Avg Answer Relevance</div>
+      <div class="metric-value" style="color:#22c55e">84%</div>
+      <div class='metric-sub'>LLM eval metric</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Avg Tool Calls</div>
+      <div class="metric-value" style="color:#60a5fa">4.5</div>
+      <div class='metric-sub'>per test</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Avg Retries</div>
+      <div class="metric-value" style="color:#a78bfa">1.0</div>
+      <div class='metric-sub'>per test</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Avg Response Time</div>
+      <div class="metric-value" style="color:#34d399">16.5s</div>
+      <div class='metric-sub'>per test</div>
+    </div></div>
+
+  <div class="section-title">Charts</div>
+  <div class="charts">
+    <div class="chart-card" style="max-width:420px">
+      <h3>Category Scores (Radar)</h3>
+      <canvas id="radarChart" height="320"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Per-Test Pass / Fail</h3>
+      <canvas id="barChart" height="320"></canvas>
+    </div>
+  </div>
+
+  <div class="section-title">Test Results</div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#60a5fa"></div>Context Precision</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a78bfa"></div>Context Recall</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#34d399"></div>Answer Relevance</div>
+    <div class="legend-item" style="color:#64748b">Click a row to expand checks</div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>Score</th><th>Description</th>
+          <th style="color:#60a5fa">Precision</th>
+          <th style="color:#a78bfa">Recall</th>
+          <th style="color:#34d399">Relevance</th>
+          <th>Tools</th><th>Retries / Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr class="test-row" onclick="toggleChecks('A001')">
+            <td><code>A001</code></td>
+            <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
+            <td style="max-width:300px;font-size:0.85rem">get_portfolio must be called before any get_live_price call</td>
+            <td style="color:#60a5fa">12%</td>
+            <td style="color:#a78bfa">100%</td>
+            <td style="color:#34d399">100%</td>
+            <td>9</td>
+            <td>1 / 27.2s</td>
+          </tr>
+          <tbody id="checks-A001" style="display:none">
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_portfolio' must be called
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">'get_portfolio' found in log</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> get_portfolio must be called before get_live_price
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">portfolio order=0, first price order=1</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_live_price' must be called
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">'get_live_price' found in log</td>
+              </tr></tbody>
+          <tr class="test-row" onclick="toggleChecks('A002')">
+            <td><code>A002</code></td>
+            <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
+            <td style="max-width:300px;font-size:0.85rem">Off-topic request must trigger zero tool calls</td>
+            <td style="color:#60a5fa">N/A</td>
+            <td style="color:#a78bfa">0%</td>
+            <td style="color:#34d399">40%</td>
+            <td>0</td>
+            <td>1 / 6.2s</td>
+          </tr>
+          <tbody id="checks-A002" style="display:none">
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> No tools must be called for off-topic requests
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">0 tool calls</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-guardrail">guardrail</span> Response must propose 0 trades
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">0 trades — guardrail held</td>
+              </tr></tbody>
+          <tr class="test-row" onclick="toggleChecks('A003')">
+            <td><code>A003</code></td>
+            <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
+            <td style="max-width:300px;font-size:0.85rem">WIPRO-only goal must fetch WIPRO price and no unrequested tickers</td>
+            <td style="color:#60a5fa">0%</td>
+            <td style="color:#a78bfa">100%</td>
+            <td style="color:#34d399">80%</td>
+            <td>2</td>
+            <td>1 / 13.5s</td>
+          </tr>
+          <tbody id="checks-A003" style="display:none">
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_portfolio' must be called
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">'get_portfolio' found in log</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> get_live_price must be called for ticker 'WIPRO'
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Tickers fetched: ['WIPRO']</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-precision">precision</span> Context precision must be >= 50% (tickers used in summary / tickers fetched via tool)
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Precision=1.00 (1 used / 1 fetched). Used: {'WIPRO'}, Fetched: {'WIPRO'}</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-relevance">relevance</span> Summary must mention one of: ['wipro', 'price', '₹']
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Keyword 'wipro' found</td>
+              </tr></tbody>
+          <tr class="test-row" onclick="toggleChecks('A004')">
+            <td><code>A004</code></td>
+            <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
+            <td style="max-width:300px;font-size:0.85rem">Full portfolio review must call get_live_price for all 3 held tickers</td>
+            <td style="color:#60a5fa">0%</td>
+            <td style="color:#a78bfa">100%</td>
+            <td style="color:#34d399">100%</td>
+            <td>4</td>
+            <td>1 / 20.6s</td>
+          </tr>
+          <tbody id="checks-A004" style="display:none">
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> Live price must be fetched for all holdings: ['HDFC', 'RELIANCE', 'TCS']
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">All fetched: ['HDFC', 'RELIANCE', 'TCS']</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> Total tool calls must be in [4, 10]
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">4 tool call(s) (allowed [4, 10])</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-recall">recall</span> Context recall must be >= 100% (holdings mentioned in summary / total holdings)
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Recall=1.00 (3/3 holdings). Mentioned: {'RELIANCE', 'HDFC', 'TCS'}</td>
+              </tr></tbody>
+          <tr class="test-row" onclick="toggleChecks('A005')">
+            <td><code>A005</code></td>
+            <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
+            <td style="max-width:300px;font-size:0.85rem">record_trade tool must never be called during analysis</td>
+            <td style="color:#60a5fa">100%</td>
+            <td style="color:#a78bfa">100%</td>
+            <td style="color:#34d399">100%</td>
+            <td>2</td>
+            <td>1 / 12.0s</td>
+          </tr>
+          <tbody id="checks-A005" style="display:none">
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'record_trade' must NOT be called
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">'record_trade' absent</td>
+              </tr></tbody>
+          <tr class="test-row" onclick="toggleChecks('A006')">
+            <td><code>A006</code></td>
+            <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
+            <td style="max-width:300px;font-size:0.85rem">Tool call count must stay within a reasonable bound (≤ 15 total)</td>
+            <td style="color:#60a5fa">12%</td>
+            <td style="color:#a78bfa">100%</td>
+            <td style="color:#34d399">100%</td>
+            <td>9</td>
+            <td>1 / 17.8s</td>
+          </tr>
+          <tbody id="checks-A006" style="display:none">
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> Total tool calls must be in [2, 15]
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">9 tool call(s) (allowed [2, 15])</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_portfolio' must be called
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">'get_portfolio' found in log</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_live_price' must be called
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">'get_live_price' found in log</td>
+              </tr></tbody>
+          <tr class="test-row" onclick="toggleChecks('A007')">
+            <td><code>A007</code></td>
+            <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
+            <td style="max-width:300px;font-size:0.85rem">Over-aggressive plan must be rejected once then converge on retry</td>
+            <td style="color:#60a5fa">100%</td>
+            <td style="color:#a78bfa">100%</td>
+            <td style="color:#34d399">80%</td>
+            <td>5</td>
+            <td>1 / 19.6s</td>
+          </tr>
+          <tbody id="checks-A007" style="display:none">
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-retry">retry</span> Retry loop must converge to risk_approved=True
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">risk_approved=True after 1 retries</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-retry">retry</span> retry_count must be <= 3
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">retry_count=1 (need <= 3)</td>
+              </tr></tbody>
+          <tr class="test-row" onclick="toggleChecks('A008')">
+            <td><code>A008</code></td>
+            <td><span class="badge" style="background:#ef444420;color:#ef4444;border:1px solid #ef444440">FAIL</span></td>
+            <td style="max-width:300px;font-size:0.85rem">Unsupported ticker plan exhausts retries and ends with risk_approved=False</td>
+            <td style="color:#60a5fa">0%</td>
+            <td style="color:#a78bfa">100%</td>
+            <td style="color:#34d399">60%</td>
+            <td>5</td>
+            <td>1 / 21.6s</td>
+          </tr>
+          <tbody id="checks-A008" style="display:none">
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#ef4444;font-weight:700">✗</span>
+                  <span class="cat-badge cat-guardrail">guardrail</span> risk_approved must be False
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">risk_approved=True (expected False)</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-guardrail">guardrail</span> Response must propose 0 trades
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">0 trades — guardrail held</td>
+              </tr></tbody>
+          <tr class="test-row" onclick="toggleChecks('A009')">
+            <td><code>A009</code></td>
+            <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
+            <td style="max-width:300px;font-size:0.85rem">Conservative valid plan must be approved in a single auditor pass</td>
+            <td style="color:#60a5fa">100%</td>
+            <td style="color:#a78bfa">100%</td>
+            <td style="color:#34d399">100%</td>
+            <td>2</td>
+            <td>1 / 11.2s</td>
+          </tr>
+          <tbody id="checks-A009" style="display:none">
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-retry">retry</span> retry_count must be <= 1
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">retry_count=1 (need <= 1)</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-guardrail">guardrail</span> risk_approved must be True
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">risk_approved=True (expected True)</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-general">general</span> Response must propose >= 1 trade(s)
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">1 trade(s) found (need >= 1)</td>
+              </tr></tbody>
+          <tr class="test-row" onclick="toggleChecks('A010')">
+            <td><code>A010</code></td>
+            <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
+            <td style="max-width:300px;font-size:0.85rem">Feedback mode health check must complete within 2 auditor passes</td>
+            <td style="color:#60a5fa">33%</td>
+            <td style="color:#a78bfa">100%</td>
+            <td style="color:#34d399">100%</td>
+            <td>4</td>
+            <td>1 / 23.2s</td>
+          </tr>
+          <tbody id="checks-A010" style="display:none">
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-retry">retry</span> retry_count must be <= 2
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">retry_count=1 (need <= 2)</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_portfolio' must be called
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">'get_portfolio' found in log</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-guardrail">guardrail</span> risk_approved must be True
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">risk_approved=True (expected True)</td>
+              </tr></tbody>
+          <tr class="test-row" onclick="toggleChecks('A011')">
+            <td><code>A011</code></td>
+            <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
+            <td style="max-width:300px;font-size:0.85rem">All proposed trade prices must be within 2% of fetched live price</td>
+            <td style="color:#60a5fa">100%</td>
+            <td style="color:#a78bfa">33%</td>
+            <td style="color:#34d399">80%</td>
+            <td>2</td>
+            <td>1 / 13.0s</td>
+          </tr>
+          <tbody id="checks-A011" style="display:none">
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-grounding">grounding</span> All proposed trade prices must be within 2% of fetched live price (grounding >= 100%)
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Grounded 1/1 trades (100%). HDFC: 0.00% ✓</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> get_live_price must be called for ticker 'HDFC'
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Tickers fetched: ['HDFC']</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-faithfulness">faithfulness</span> Every ticker in proposed trades must have a corresponding get_live_price call
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">All trade tickers had prices fetched</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-guardrail">guardrail</span> risk_approved must be True
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">risk_approved=True (expected True)</td>
+              </tr></tbody>
+          <tr class="test-row" onclick="toggleChecks('A012')">
+            <td><code>A012</code></td>
+            <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
+            <td style="max-width:300px;font-size:0.85rem">Proposed trades must only reference tickers for which price was fetched</td>
+            <td style="color:#60a5fa">12%</td>
+            <td style="color:#a78bfa">100%</td>
+            <td style="color:#34d399">100%</td>
+            <td>9</td>
+            <td>1 / 14.9s</td>
+          </tr>
+          <tbody id="checks-A012" style="display:none">
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-faithfulness">faithfulness</span> Every ticker in proposed trades must have a corresponding get_live_price call
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">All trade tickers had prices fetched</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-grounding">grounding</span> All proposed trade prices must be within 5% of fetched live price (grounding >= 100%)
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Grounded 1/1 trades (100%). ICICIBANK: 0.00% ✓</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-general">general</span> Response must propose >= 1 trade(s)
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">1 trade(s) found (need >= 1)</td>
+              </tr></tbody>
+          <tr class="test-row" onclick="toggleChecks('A013')">
+            <td><code>A013</code></td>
+            <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
+            <td style="max-width:300px;font-size:0.85rem">TCS-only sell query must mention TCS in summary (precision)</td>
+            <td style="color:#60a5fa">0%</td>
+            <td style="color:#a78bfa">33%</td>
+            <td style="color:#34d399">40%</td>
+            <td>2</td>
+            <td>1 / 11.1s</td>
+          </tr>
+          <tbody id="checks-A013" style="display:none">
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> get_live_price must be called for ticker 'TCS'
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Tickers fetched: ['TCS']</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-precision">precision</span> Context precision must be >= 50% (tickers used in summary / tickers fetched via tool)
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Precision=1.00 (1 used / 1 fetched). Used: {'TCS'}, Fetched: {'TCS'}</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-relevance">relevance</span> Summary must mention one of: ['tcs']
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Keyword 'tcs' found</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-relevance">relevance</span> Summary must contain >= 2 of: ['tcs', 'value', 'shares', 'price', '₹']
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Found 4/2 required keywords: ['tcs', 'value', 'shares', 'price']</td>
+              </tr></tbody>
+          <tr class="test-row" onclick="toggleChecks('A014')">
+            <td><code>A014</code></td>
+            <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
+            <td style="max-width:300px;font-size:0.85rem">Sector review must mention all held tickers in summary (recall)</td>
+            <td style="color:#60a5fa">0%</td>
+            <td style="color:#a78bfa">100%</td>
+            <td style="color:#34d399">100%</td>
+            <td>4</td>
+            <td>1 / 21.1s</td>
+          </tr>
+          <tbody id="checks-A014" style="display:none">
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> Live price must be fetched for all holdings: ['HDFC', 'RELIANCE', 'TCS']
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">All fetched: ['HDFC', 'RELIANCE', 'TCS']</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-recall">recall</span> Context recall must be >= 100% (holdings mentioned in summary / total holdings)
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Recall=1.00 (3/3 holdings). Mentioned: {'RELIANCE', 'HDFC', 'TCS'}</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-relevance">relevance</span> Summary must contain >= 1 of: ['sector', 'financial', 'banking', 'technology', 'it', 'energy']
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Found 5/1 required keywords: ['sector', 'financial', 'technology', 'it', 'energy']</td>
+              </tr></tbody>
+          <tr class="test-row" onclick="toggleChecks('A015')">
+            <td><code>A015</code></td>
+            <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
+            <td style="max-width:300px;font-size:0.85rem">Cash observation goal must produce a relevant, on-topic summary</td>
+            <td style="color:#60a5fa">0%</td>
+            <td style="color:#a78bfa">100%</td>
+            <td style="color:#34d399">80%</td>
+            <td>9</td>
+            <td>1 / 15.1s</td>
+          </tr>
+          <tbody id="checks-A015" style="display:none">
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_portfolio' must be called
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">'get_portfolio' found in log</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-relevance">relevance</span> Summary must contain >= 2 of: ['cash', 'allocation', 'equity', 'ratio', 'balance', '50%', 'idle']
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Found 4/2 required keywords: ['cash', 'allocation', 'equity', 'balance']</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-relevance">relevance</span> Summary must mention one of: ['cash']
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Keyword 'cash' found</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-guardrail">guardrail</span> risk_approved must be True
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">risk_approved=True (expected True)</td>
+              </tr></tbody>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-title">Metric Definitions</div>
+  <div style="background:#1e2130;border:1px solid #2d3148;border-radius:10px;padding:20px;font-size:0.83rem;line-height:1.8;color:#94a3b8">
+    <b style="color:#e2e8f0">Context Precision</b> — tickers_used_in_summary ÷ tickers_fetched_via_tool. High = analyst fetched only what it needed.<br>
+    <b style="color:#e2e8f0">Context Recall</b> — holdings_mentioned_in_summary ÷ total_holdings. High = analyst covered the whole portfolio.<br>
+    <b style="color:#e2e8f0">Answer Relevance</b> — financial signal word density in the summary (normalised 0–1).<br>
+    <b style="color:#e2e8f0">Price Grounding</b> — % of proposed trade prices within 2% of fetched live price (mirrors risk auditor rule).<br>
+    <b style="color:#e2e8f0">Faithfulness</b> — every ticker in proposed_trades had its price fetched via tool (no hallucinated tickers).<br>
+    <b style="color:#e2e8f0">Guardrail</b> — % of guardrail checks passed (ShouldReject + RiskApproved checks).<br>
+    <b style="color:#e2e8f0">Tool Call</b> — % of tool-call checks passed (ordering, count, specific ticker, off-topic suppression).<br>
+    <b style="color:#e2e8f0">Retry</b> — % of retry checks passed (convergence, exhaustion, max-retries gate).
+  </div>
+
+</div>
+
+<script>
+const radarRaw  = {"labels": ["Guardrail", "Tool Call", "Retry", "Grounding", "Faithfulness", "Precision", "Recall", "Relevance"], "values": [86, 100, 100, 100, 100, 34, 84, 84]};
+const barRaw    = {"labels": ["A001", "A002", "A003", "A004", "A005", "A006", "A007", "A008", "A009", "A010", "A011", "A012", "A013", "A014", "A015"], "colours": ["#22c55e", "#22c55e", "#22c55e", "#22c55e", "#22c55e", "#22c55e", "#22c55e", "#ef4444", "#22c55e", "#22c55e", "#22c55e", "#22c55e", "#22c55e", "#22c55e", "#22c55e"], "values": [1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1]};
+
+// ── Radar chart ──────────────────────────────────────────────────────────────
+new Chart(document.getElementById("radarChart"), {
+  type: "radar",
+  data: {
+    labels: radarRaw.labels,
+    datasets: [{
+      label: "Score %",
+      data: radarRaw.values,
+      backgroundColor: "rgba(99,102,241,0.15)",
+      borderColor: "#6366f1",
+      pointBackgroundColor: "#6366f1",
+      pointRadius: 4,
+    }],
+  },
+  options: {
+    responsive: true,
+    scales: {
+      r: {
+        min: 0, max: 100, ticks: { stepSize: 25, color: "#4b5563", backdropColor: "transparent" },
+        grid: { color: "#2d3148" },
+        pointLabels: { color: "#94a3b8", font: { size: 11 } },
+        angleLines: { color: "#2d3148" },
+      }
+    },
+    plugins: { legend: { display: false } },
+  },
+});
+
+// ── Bar chart ─────────────────────────────────────────────────────────────────
+new Chart(document.getElementById("barChart"), {
+  type: "bar",
+  data: {
+    labels: barRaw.labels,
+    datasets: [{
+      label: "Pass",
+      data: barRaw.values,
+      backgroundColor: barRaw.colours,
+    }],
+  },
+  options: {
+    responsive: true,
+    scales: {
+      y: { min: 0, max: 1, ticks: { stepSize: 1, color: "#4b5563" }, grid: { color: "#2d3148" } },
+      x: { ticks: { color: "#94a3b8" }, grid: { display: false } },
+    },
+    plugins: { legend: { display: false } },
+  },
+});
+
+// ── Toggle check rows ─────────────────────────────────────────────────────────
+function toggleChecks(id) {
+  const el = document.getElementById("checks-" + id);
+  if (el) el.style.display = el.style.display === "none" ? "" : "none";
+}
+</script>
+</body>
+</html>

@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 load_dotenv()  # must run before any langchain/langgraph import
 
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -13,7 +14,13 @@ from db.engine import engine, migrate_db
 from db.models import Base
 from api.routes import router, set_mcp_holder
 
-server_params = StdioServerParameters(command="python", args=["tools/market_server_mcp.py"])
+# Pass current environment explicitly so the MCP subprocess inherits
+# DATABASE_URL and other vars injected by docker-compose (not from .env file).
+server_params = StdioServerParameters(
+    command="python",
+    args=["tools/market_server_mcp.py"],
+    env=os.environ.copy(),
+)
 
 
 @asynccontextmanager
