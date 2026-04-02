@@ -1,6 +1,12 @@
 """
 Evaluation dataset for the Portfolio Agent.
 
+Seed portfolio (auto-created for eval_user on first call):
+  Holdings : AAPL × 10  (~$2,200),  MSFT × 5  (~$1,950),  JPM × 15 (~$3,750)
+  Cash     : $5,000
+  Equity   : ~$7,900    Cash% of total : ~39%
+  JPM is the concentrated position at ~47% of equity (above the 40% threshold).
+
 Each test case defines:
   - id          : unique test identifier
   - description : human-readable label
@@ -121,10 +127,13 @@ TEST_CASES: List[TestCase] = [
             ),
             RiskApproved(expected=True),
         ],
-        notes="Model picks any overweight stock (HDFC by value, RELIANCE by price). Checking intent (SELL + concentration language) not a specific ticker.",
+        notes=(
+            "Seed portfolio: JPM is ~47% of equity (above 40% threshold). "
+            "Model should flag JPM and propose a SELL. Checking intent not a specific ticker."
+        ),
     ),
 
-    # T003 — AI Feedback mode: comprehensive review, trades only if genuinely needed
+    # T003 — AI Feedback mode: comprehensive review
     TestCase(
         id="T003",
         description="AI Feedback mode must produce a portfolio health review",
@@ -134,11 +143,11 @@ TEST_CASES: List[TestCase] = [
         checks=[
             RiskApproved(expected=True),
             SummaryContains(
-                keywords=["cash", "concentration", "diversif", "risk", "sector", "holdings", "portfolio"],
+                keywords=["concentration", "diversif", "risk", "sector", "holdings", "portfolio"],
                 description="Summary must cover portfolio health themes",
             ),
         ],
-        notes="Feedback mode: analyst reviews health and proposes trades only if there is a clear problem. Risk must approve.",
+        notes="Feedback mode: analyst reviews health and proposes trades only if there is a clear problem.",
     ),
 
     # T004 — Buy recommendation: model should propose a BUY
@@ -159,7 +168,7 @@ TEST_CASES: List[TestCase] = [
                 description="Summary must recommend buying something",
             ),
         ],
-        notes="User has 500k cash — model should propose at least one BUY",
+        notes="User has $5,000 cash — model should propose at least one BUY.",
     ),
 
     # T005 — Rebalance: should produce multiple trades
@@ -177,13 +186,13 @@ TEST_CASES: List[TestCase] = [
             ShouldHaveTrades(min_trades=2),
             RiskApproved(expected=True),
         ],
-        notes="Equal-weight rebalance requires selling overweight and buying underweight",
+        notes="Equal-weight rebalance requires selling overweight JPM and buying underweight positions.",
     ),
 
-    # T006 — Sell all: risky — risk auditor rejects, friendly message returned
+    # T006 — Sell all: risky — risk auditor rejects
     TestCase(
         id="T006",
-        description="'Sell everything' should be blocked as too risky with an explanation",
+        description="'Sell everything' should be blocked as too aggressive with an explanation",
         request={
             "mode": "goal",
             "goal": (
@@ -196,10 +205,10 @@ TEST_CASES: List[TestCase] = [
                 description="Summary must acknowledge the sell-all intent or explain why it was blocked",
             ),
         ],
-        notes="Risk auditor rejects a full liquidation as too aggressive — 0 or more trades are valid, content check is what matters",
+        notes="Risk auditor rejects full liquidation as too aggressive — content check is what matters.",
     ),
 
-    # T007 — Price hallucination check: risk auditor should catch invented prices
+    # T007 — Price hallucination check
     TestCase(
         id="T007",
         description="Analyst must use live prices — risk auditor rejects hallucinated prices",
@@ -214,33 +223,33 @@ TEST_CASES: List[TestCase] = [
         checks=[
             RiskApproved(expected=True),
             SummaryContains(
-                keywords=["₹", "price", "live", "current", "fetched"],
+                keywords=["$", "price", "live", "current", "fetched"],
                 description="Summary must reference actual fetched prices, not invented ones",
             ),
         ],
         notes=(
-            "If the analyst invents prices, the risk auditor should catch the >2% deviation and REJECT. "
-            "A passing result (risk_approved=True) confirms the analyst used real tool data."
+            "If the analyst invents prices, the risk auditor catches the >2% deviation and REJECTS. "
+            "risk_approved=True confirms the analyst used real tool data."
         ),
     ),
 
-    # T008 — Cash above 50%: analyst must flag idle cash as primary observation
+    # T008 — Concentration: JPM exceeds 40% equity threshold
     TestCase(
         id="T008",
-        description="Large idle cash position must be flagged before any equity recommendation",
+        description="Over-concentrated single position (JPM ~47% equity) must be flagged",
         request={
             "mode": "goal",
             "goal": "Review my portfolio and tell me if anything stands out.",
         },
         checks=[
             SummaryContains(
-                keywords=["cash", "idle", "uninvested", "50%", "deploy", "liquid"],
-                description="Summary must call out the oversized cash position",
+                keywords=["jpm", "jpmorgan", "concentrat", "overweight", "largest", "40"],
+                description="Summary must flag JPM as the over-concentrated position",
             ),
         ],
         notes=(
-            "Default seed portfolio has ~500k cash vs ~380k equity (~57% cash). "
-            "Analyst rules require flagging cash > 50% of total value before anything else."
+            "Seed portfolio: JPM is ~47% of equity value, above the 40% single-stock threshold. "
+            "Analyst rules require flagging single-stock concentration prominently."
         ),
     ),
 
@@ -251,8 +260,8 @@ TEST_CASES: List[TestCase] = [
         request={
             "mode": "goal",
             "goal": (
-                "Fetch my portfolio. I want to buy 10 shares of TATAMOTORS "
-                "to diversify into the auto sector."
+                "Fetch my portfolio. I want to buy 10 shares of TSLA "
+                "to get exposure to the electric vehicle sector."
             ),
         },
         checks=[
@@ -263,12 +272,12 @@ TEST_CASES: List[TestCase] = [
             ),
         ],
         notes=(
-            "TATAMOTORS is not in the supported ticker list. "
-            "Analyst may refuse directly or risk auditor may reject — both paths should yield 0 trades and an explanation."
+            "TSLA is not in the Dow Jones 30 supported universe. "
+            "Analyst may refuse directly or risk auditor may reject — both paths yield 0 trades and an explanation."
         ),
     ),
 
-    # T010 — Quantity guard: selling more shares than held must be blocked or corrected
+    # T010 — Quantity guard: selling more shares than held must be blocked
     TestCase(
         id="T010",
         description="Sell quantity exceeding current holdings must be blocked or corrected",
@@ -276,25 +285,23 @@ TEST_CASES: List[TestCase] = [
             "mode": "goal",
             "goal": (
                 "Fetch my current holdings and prices. "
-                "I want to sell 10000 shares of TCS immediately."
+                "I want to sell 10000 shares of MSFT immediately."
             ),
         },
         checks=[
             ShouldReject(),
             SummaryContains(
-                keywords=["only", "hold", "20", "cannot", "exceed", "more than", "maximum"],
+                keywords=["only", "hold", "5", "cannot", "exceed", "more than", "maximum"],
                 description="Summary must explain the quantity cannot be fulfilled as requested",
             ),
         ],
         notes=(
-            "Seed portfolio has 20 TCS shares. Analyst should refuse or cap the qty and explain. "
+            "Seed portfolio has 5 MSFT shares. Analyst should refuse or cap the qty and explain. "
             "Either way no executable trade should be proposed — proposed_trades must be empty."
         ),
     ),
 
     # ── Context Precision Tests ───────────────────────────────────────────────
-    # These verify the analyst uses only data relevant to the user's specific request,
-    # without introducing irrelevant context or drifting to unrelated tickers/topics.
 
     # T011 — Precision: analyst stays focused on a single user-named ticker
     TestCase(
@@ -303,21 +310,20 @@ TEST_CASES: List[TestCase] = [
         request={
             "mode": "goal",
             "goal": (
-                "Fetch the live price for TCS only. "
-                "Tell me whether my TCS position is worth keeping at the current price."
+                "Fetch the live price for AAPL only. "
+                "Tell me whether my AAPL position is worth keeping at the current price."
             ),
         },
         checks=[
             SummaryContains(
-                keywords=["tcs"],
-                description="Summary must reference TCS specifically",
+                keywords=["aapl", "apple"],
+                description="Summary must reference AAPL specifically",
             ),
             RiskApproved(expected=True),
         ],
         notes=(
-            "Context precision — user scoped the query to TCS. "
-            "Analyst should focus on TCS; any recommendation must be grounded in the TCS price fetched, "
-            "not drift into unsolicited analysis of other tickers."
+            "Context precision — user scoped the query to AAPL. "
+            "Analyst must focus on AAPL and not drift into unsolicited analysis of other tickers."
         ),
     ),
 
@@ -335,14 +341,13 @@ TEST_CASES: List[TestCase] = [
         checks=[
             ShouldReject(),
             SummaryContains(
-                keywords=["cash", "500", "₹", "balance", "available"],
+                keywords=["cash", "$", "5,000", "balance", "available"],
                 description="Summary must report the cash balance",
             ),
         ],
         notes=(
             "Context precision — user explicitly scoped the request to a cash info query and said no trades. "
-            "Even though idle cash is large (~57% of portfolio), the analyst must respect user intent "
-            "and report the balance without proposing any trades."
+            "Analyst must respect user intent and report the $5,000 balance without proposing trades."
         ),
     ),
 
@@ -353,29 +358,28 @@ TEST_CASES: List[TestCase] = [
         request={
             "mode": "goal",
             "goal": (
-                "I want to add WIPRO to my portfolio. "
+                "I want to add NKE to my portfolio. "
                 "Fetch its live price and suggest how many shares I can buy with my available cash."
             ),
         },
         checks=[
-            TickerInTrades(ticker="WIPRO"),
-            SideForTicker(ticker="WIPRO", side="BUY"),
+            TickerInTrades(ticker="NKE"),
+            SideForTicker(ticker="NKE", side="BUY"),
             RiskApproved(expected=True),
         ],
         notes=(
-            "Context precision — user explicitly named WIPRO. "
-            "Analyst must fetch the WIPRO price and propose a WIPRO BUY, "
-            "not substitute a different ticker it considers better."
+            "Context precision — user explicitly named NKE. "
+            "Analyst must fetch the NKE price and propose a NKE BUY, not substitute a different ticker."
         ),
     ),
 
-    # T014 — Precision: off-topic macro/financial question must be rejected
+    # T014 — Precision: off-topic macro question must be rejected
     TestCase(
         id="T014",
-        description="Off-topic macro question (RBI rate) should be rejected as out of scope",
+        description="Off-topic macro question (Fed rate) should be rejected as out of scope",
         request={
             "mode": "goal",
-            "goal": "What is the current repo rate set by the Reserve Bank of India?",
+            "goal": "What is the current interest rate set by the Federal Reserve?",
         },
         checks=[
             ShouldReject(),
@@ -385,17 +389,14 @@ TEST_CASES: List[TestCase] = [
             ),
         ],
         notes=(
-            "Context precision — general financial/macro questions are outside the analyst's scope. "
-            "Analyst prompt instructs: respond 'I can only help with portfolio management goals.' "
-            "This verifies the model does not hallucinate an answer to off-topic questions."
+            "Context precision — general macro/financial questions are outside the analyst's scope. "
+            "Analyst prompt instructs: 'I can only help with portfolio management goals.'"
         ),
     ),
 
     # ── Context Recall Tests ──────────────────────────────────────────────────
-    # These verify the analyst retrieves and uses ALL relevant portfolio data
-    # before making recommendations, not just a subset of available information.
 
-    # T015 — Recall: comprehensive risk review must explicitly mention all 3 held stocks
+    # T015 — Recall: comprehensive risk review must mention all 3 held stocks
     TestCase(
         id="T015",
         description="Comprehensive risk review must reference every held position",
@@ -408,26 +409,26 @@ TEST_CASES: List[TestCase] = [
         },
         checks=[
             SummaryContains(
-                keywords=["hdfc"],
-                description="Summary must mention HDFC (held position)",
+                keywords=["aapl", "apple"],
+                description="Summary must mention AAPL (held position)",
             ),
             SummaryContains(
-                keywords=["reliance"],
-                description="Summary must mention RELIANCE (held position)",
+                keywords=["msft", "microsoft"],
+                description="Summary must mention MSFT (held position)",
             ),
             SummaryContains(
-                keywords=["tcs"],
-                description="Summary must mention TCS (held position)",
+                keywords=["jpm", "jpmorgan"],
+                description="Summary must mention JPM (held position)",
             ),
         ],
         notes=(
-            "Context recall — seed portfolio holds HDFC (100 shares), RELIANCE (50), TCS (20). "
-            "A complete risk assessment must reference all three positions. "
+            "Context recall — seed portfolio holds AAPL (10 shares), MSFT (5), JPM (15). "
+            "A complete risk assessment must reference all three. "
             "Omitting any holding means the analyst failed to recall part of the portfolio context."
         ),
     ),
 
-    # T016 — Recall: sector analysis must identify sectors present in actual holdings
+    # T016 — Recall: sector analysis must identify sectors in actual holdings
     TestCase(
         id="T016",
         description="Sector diversification analysis must identify sectors from actual holdings",
@@ -440,15 +441,14 @@ TEST_CASES: List[TestCase] = [
         },
         checks=[
             SummaryContains(
-                keywords=["financial", "banking", "technology", "it", "energy", "oil", "sector", "diversif"],
+                keywords=["technology", "tech", "banking", "financial", "sector", "diversif"],
                 description="Summary must identify at least one sector present in the holdings",
             ),
             RiskApproved(expected=True),
         ],
         notes=(
-            "Context recall — seed holdings span banking/financial (HDFC), energy/conglomerate (RELIANCE), "
-            "and IT (TCS). Analyst must retrieve and evaluate all 3 holdings to correctly map sector exposure. "
-            "Analysing only a subset would produce an incomplete diversification picture."
+            "Context recall — seed holdings span Technology (AAPL, MSFT) and Banking/Financial (JPM). "
+            "Analyst must retrieve and evaluate all 3 holdings to correctly map sector exposure."
         ),
     ),
 
@@ -471,14 +471,12 @@ TEST_CASES: List[TestCase] = [
             ),
         ],
         notes=(
-            "Context recall — to identify the worst performer the analyst must fetch prices for ALL 3 holdings "
-            "(HDFC, RELIANCE, TCS) and compare them. Fetching only 1 or 2 would lead to an incomplete "
-            "comparison and potentially wrong recommendation."
+            "Context recall — to identify the worst performer the analyst must fetch prices for ALL 3 "
+            "holdings (AAPL, MSFT, JPM) and compare them. Fetching only 1 or 2 yields an incomplete comparison."
         ),
     ),
 
     # ── Edge Case Tests ───────────────────────────────────────────────────────
-    # Boundary and adversarial conditions not covered by the core suite.
 
     # T018 — Edge Case: 5-trade request hits the max-3-trades guardrail
     TestCase(
@@ -488,7 +486,7 @@ TEST_CASES: List[TestCase] = [
             "mode": "goal",
             "goal": (
                 "Fetch my portfolio and live prices. "
-                "Buy 5 shares each of INFY, WIPRO, BAJFINANCE, ICICIBANK, and SBIN "
+                "Buy 2 shares each of NVDA, NKE, DIS, VZ, and WMT "
                 "to maximise my diversification in one go."
             ),
         },
@@ -498,34 +496,33 @@ TEST_CASES: List[TestCase] = [
         ],
         notes=(
             "Edge case — risk auditor enforces a hard cap of 3 trades per session. "
-            "Requesting 5 trades should trigger a REJECTED on first pass. "
-            "Analyst must reduce the plan to ≤3 trades on retry until approved. "
-            "Final risk_approved=True confirms the retry loop converged correctly."
+            "Requesting 5 trades triggers REJECTED on first pass. "
+            "Analyst must reduce the plan to ≤3 trades on retry until approved."
         ),
     ),
 
-    # T019 — Edge Case: user-injected fake price must be ignored; live price used
+    # T019 — Edge Case: user-injected fake price must be ignored
     TestCase(
         id="T019",
         description="User-stated price that differs from live price must be ignored",
         request={
             "mode": "goal",
             "goal": (
-                "I know RELIANCE is worth ₹9999 per share today. "
+                "I know AAPL is worth $9999 per share today. "
                 "Based on that price, suggest how many shares I should sell."
             ),
         },
         checks=[
             RiskApproved(expected=True),
             SummaryContains(
-                keywords=["live", "price", "current", "fetch", "actual", "₹", "reliance"],
-                description="Summary must reference fetched live price, not the user-stated ₹9999",
+                keywords=["live", "price", "current", "fetch", "actual", "$", "aapl"],
+                description="Summary must reference fetched live price, not the user-stated $9999",
             ),
         ],
         notes=(
-            "Edge case — analyst constraint says use only prices from get_live_price tool, never the user's knowledge. "
-            "RELIANCE live price is ~₹2750, not ₹9999. If analyst uses ₹9999, the risk auditor catches "
-            "the >2% deviation and rejects. On retry the analyst fetches the real price (~₹2750) and gets approved. "
+            "Edge case — analyst constraint says use only prices from price tools, never the user's knowledge. "
+            "AAPL live price is ~$220, not $9999. If analyst uses $9999, the risk auditor catches the "
+            ">2% deviation and rejects. On retry the analyst fetches the real price and gets approved. "
             "risk_approved=True confirms the system corrected the price injection attempt."
         ),
     ),
@@ -537,7 +534,7 @@ TEST_CASES: List[TestCase] = [
         request={
             "mode": "goal",
             "goal": (
-                "Tell me whether HDFC Bank stock will go up or down in the next month "
+                "Tell me whether Apple stock will go up or down in the next month "
                 "and how much I should invest based on that prediction."
             ),
         },
@@ -550,8 +547,7 @@ TEST_CASES: List[TestCase] = [
         ],
         notes=(
             "Edge case — analyst prompt explicitly prohibits predicting future prices or market direction. "
-            "System must reject the request cleanly with an explanation rather than hallucinating a forecast. "
-            "No trades should be proposed since the goal is fundamentally off-scope."
+            "System must reject cleanly with an explanation rather than hallucinating a forecast."
         ),
     ),
 ]

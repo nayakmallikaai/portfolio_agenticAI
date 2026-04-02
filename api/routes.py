@@ -118,7 +118,7 @@ async def analyze(req: AnalyzeRequest):
     try:
         crud.get_or_create_user(db, req.user_id)
 
-        result = await run_analysis(effective_goal, req.user_id, _mcp_holder)
+        result = await run_analysis(effective_goal, req.user_id, _mcp_holder, req.mode)
 
         crud.save_analysis_session(
             db,
@@ -220,7 +220,7 @@ async def execute(req: ExecuteRequest):
                 {"ticker": trade["ticker"], "user_id": req.user_id},
             )
             live_price = float(price_result.content[0].text)
-            print(f"[EXECUTE] {trade['ticker']} live price: ₹{live_price}")
+            print(f"[EXECUTE] {trade['ticker']} live price: ${live_price}")
 
             result = await mcp_session.call_tool(
                 "record_trade",

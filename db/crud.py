@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 
 from db.models import User, Portfolio, AnalysisSession, TradeHistory
 
-_SEED_HOLDINGS = {"HDFC": 100, "RELIANCE": 50, "TCS": 20}
-_SEED_CASH = 500_000.0
+_SEED_HOLDINGS = {"AAPL": 10, "MSFT": 5, "JPM": 15}
+_SEED_CASH = 5_000.0
 
 
 # ── User ──────────────────────────────────────────────────────────────────────

@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: portfolio-app
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    repoURL: https://github.com/nayakmallikaai/portfolio_agenticAI
+    targetRevision: main
+    path: deployment_scripts/k8s       # ArgoCD watches the k8s/ folder
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+
+  syncPolicy:
+    automated:
+      prune: true                      # delete resources removed from git
+      selfHeal: true                   # revert manual kubectl changes
+    syncOptions:
+      - CreateNamespace=true

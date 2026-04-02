@@ -27,7 +27,11 @@
       "Bash(docker-compose logs:*)",
       "Bash(docker-compose run:*)",
       "Bash(docker-compose up:*)",
-      "Bash(docker-compose restart:*)"
+      "Bash(docker-compose restart:*)",
+      "Bash(bash deployment_scripts/setup.sh)",
+      "Bash(kubectl get:*)",
+      "Bash(kubectl describe:*)",
+      "Bash(kubectl rollout:*)"
     ]
   }
 }
