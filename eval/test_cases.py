@@ -557,4 +557,149 @@ TEST_CASES: List[TestCase] = [
             "System must reject cleanly with an explanation rather than hallucinating a forecast."
         ),
     ),
+
+    # ── Performance / P&L Tests ───────────────────────────────────────────────
+    # Seed portfolio buy prices: AAPL@$226, MSFT@$435, JPM@$228 (6 months ago).
+    # Live prices approx: AAPL~$256 (+13%), MSFT~$373 (-14%), JPM~$295 (+29%).
+    # MSFT is the worst performer; JPM is the best.
+
+    # T021 — Worst performer identified by return %
+    TestCase(
+        id="T021",
+        description="Worst-performer query must identify MSFT (negative return) with % figure",
+        request={
+            "mode": "goal",
+            "goal": (
+                "Get my holdings and their live prices. "
+                "Which stock has the worst return since I bought it? Show me the percentage."
+            ),
+        },
+        checks=[
+            SummaryContains(
+                keywords=["msft", "microsoft"],
+                description="Summary must identify MSFT as the worst performer",
+            ),
+            SummaryContains(
+                keywords=["-", "%", "loss", "down", "negative", "return"],
+                description="Summary must show a negative return figure for the worst performer",
+            ),
+            RiskApproved(expected=True),
+        ],
+        notes=(
+            "Performance — MSFT was bought at $435, now ~$373 = approx -14% return. "
+            "Agent must use buy_price from portfolio snapshot + live price to compute return_pct. "
+            "Should clearly name MSFT and show the negative percentage."
+        ),
+    ),
+
+    # T022 — Best performer identified by return %
+    TestCase(
+        id="T022",
+        description="Best-performer query must identify JPM (highest return) with % figure",
+        request={
+            "mode": "goal",
+            "goal": (
+                "Get my stock holdings and live prices. "
+                "Which of my stocks has the best percentage return since purchase?"
+            ),
+        },
+        checks=[
+            SummaryContains(
+                keywords=["jpm", "jpmorgan"],
+                description="Summary must identify JPM as the best performer",
+            ),
+            SummaryContains(
+                keywords=["+", "%", "gain", "up", "return", "best"],
+                description="Summary must show a positive return figure for the best performer",
+            ),
+            RiskApproved(expected=True),
+        ],
+        notes=(
+            "Performance — JPM was bought at $228, now ~$295 = approx +29% return. "
+            "Agent must rank all holdings by return_pct and surface JPM as the winner."
+        ),
+    ),
+
+    # T023 — Full P&L breakdown for all holdings
+    TestCase(
+        id="T023",
+        description="P&L breakdown must show gain/loss % for all 3 holdings",
+        request={
+            "mode": "goal",
+            "goal": (
+                "Get my holdings and current prices. "
+                "Show me the gain or loss percentage for each stock I own since I bought it."
+            ),
+        },
+        checks=[
+            SummaryContains(keywords=["aapl", "apple"], description="Summary must mention AAPL"),
+            SummaryContains(keywords=["msft", "microsoft"], description="Summary must mention MSFT"),
+            SummaryContains(keywords=["jpm", "jpmorgan"], description="Summary must mention JPM"),
+            SummaryContains(
+                keywords=["%", "return", "gain", "loss"],
+                description="Summary must include percentage return figures",
+            ),
+            RiskApproved(expected=True),
+        ],
+        notes=(
+            "Performance recall — agent must cover all 3 holdings with % returns. "
+            "AAPL ~+13%, MSFT ~-14%, JPM ~+29%. All three must appear in the summary."
+        ),
+    ),
+
+    # T024 — Cut losses recommendation based on performance
+    TestCase(
+        id="T024",
+        description="Cut-losses query must recommend selling the losing position (MSFT)",
+        request={
+            "mode": "goal",
+            "goal": (
+                "Get my holdings and live prices. "
+                "Should I cut my losses on any stock? Which one is dragging my portfolio down?"
+            ),
+        },
+        checks=[
+            SummaryContains(
+                keywords=["msft", "microsoft"],
+                description="Summary must identify MSFT as the loss-making position",
+            ),
+            SummaryContains(
+                keywords=["sell", "cut", "loss", "negative", "down", "underperform"],
+                description="Summary must recommend action on the losing position",
+            ),
+        ],
+        notes=(
+            "Performance-driven trade suggestion — MSFT is the only holding with a negative return. "
+            "Agent should use buy_price vs live_price to identify it and suggest selling or trimming."
+        ),
+    ),
+
+    # T025 — Total portfolio P&L in $ terms
+    TestCase(
+        id="T025",
+        description="Total portfolio P&L query must return an overall $ gain/loss figure",
+        request={
+            "mode": "goal",
+            "goal": (
+                "Get my holdings and current prices. "
+                "What is my total dollar gain or loss across my entire portfolio since I invested?"
+            ),
+        },
+        checks=[
+            SummaryContains(
+                keywords=["$", "total", "gain", "loss", "portfolio", "overall"],
+                description="Summary must state an overall $ P&L figure",
+            ),
+            SummaryContains(
+                keywords=["aapl", "msft", "jpm"],
+                description="Summary must reference the individual holdings used in the calculation",
+            ),
+            RiskApproved(expected=True),
+        ],
+        notes=(
+            "Total P&L — seed portfolio approximate total gain/loss: "
+            "AAPL: (+$30 × 10) = +$300, MSFT: (-$62 × 5) = -$310, JPM: (+$67 × 15) = +$1,005. "
+            "Net ≈ +$995. Agent must sum across all holdings and present a total figure."
+        ),
+    ),
 ]

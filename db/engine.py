@@ -25,6 +25,8 @@ def migrate_db() -> None:
     from sqlalchemy import text
     migrations = [
         "ALTER TABLE analysis_sessions ADD COLUMN IF NOT EXISTS mode VARCHAR(10) NOT NULL DEFAULT 'goal'",
+        "ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS buy_price FLOAT",
+        "ALTER TABLE portfolios ADD COLUMN IF NOT EXISTS buy_date TIMESTAMP WITH TIME ZONE",
     ]
     with engine.connect() as conn:
         for stmt in migrations:

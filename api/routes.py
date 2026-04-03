@@ -72,27 +72,42 @@ async def get_portfolio_view(user_id: str):
 
     holdings = []
     equity_total = 0.0
+    total_gain_loss = 0.0
     for ticker, result in zip(tickers, price_results):
-        qty = portfolio["holdings"][ticker]
-        price = float(result.content[0].text)
-        value = qty * price
+        info      = portfolio["holdings"][ticker]
+        qty       = info["qty"]
+        buy_price = info.get("buy_price")
+        buy_date  = info.get("buy_date")
+        price     = float(result.content[0].text)
+        value     = qty * price
         equity_total += value
+
+        gain_loss     = round((price - buy_price) * qty, 2) if buy_price else None
+        gain_loss_pct = round((price - buy_price) / buy_price * 100, 2) if buy_price else None
+        if gain_loss is not None:
+            total_gain_loss += gain_loss
+
         holdings.append({
-            "ticker": ticker,
-            "qty": qty,
-            "live_price": round(price, 2),
-            "value": round(value, 2),
+            "ticker":        ticker,
+            "qty":           qty,
+            "buy_price":     round(buy_price, 2) if buy_price else None,
+            "buy_date":      buy_date,
+            "live_price":    round(price, 2),
+            "value":         round(value, 2),
+            "gain_loss":     gain_loss,
+            "gain_loss_pct": gain_loss_pct,
         })
 
     holdings.sort(key=lambda x: x["value"], reverse=True)
     total_value = round(equity_total + portfolio["cash"], 2)
 
     return {
-        "user_id": user_id,
-        "cash": portfolio["cash"],
-        "holdings": holdings,
-        "equity_value": round(equity_total, 2),
-        "total_value": total_value,
+        "user_id":         user_id,
+        "cash":            portfolio["cash"],
+        "holdings":        holdings,
+        "equity_value":    round(equity_total, 2),
+        "total_value":     total_value,
+        "total_gain_loss": round(total_gain_loss, 2),
     }
 
 

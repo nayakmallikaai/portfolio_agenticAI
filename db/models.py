@@ -24,6 +24,8 @@ class Portfolio(Base):
     user_id:    Mapped[str]   = mapped_column(String, ForeignKey("users.user_id"), nullable=False, index=True)
     ticker:     Mapped[str]   = mapped_column(String(20), nullable=False)
     quantity:   Mapped[int]   = mapped_column(Integer, default=0, nullable=False)
+    buy_price:  Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    buy_date:   Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

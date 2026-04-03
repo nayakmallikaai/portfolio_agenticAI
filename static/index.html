@@ -244,7 +244,7 @@
         <div class="stats" id="portfolio-stats"></div>
         <table>
           <thead>
-            <tr><th>Ticker</th><th>Qty</th><th>Price</th><th>Value</th></tr>
+            <tr><th>Ticker</th><th>Qty</th><th>Buy Price</th><th>Live Price</th><th>Value</th><th>Gain / Loss</th></tr>
           </thead>
           <tbody id="portfolio-body"></tbody>
         </table>
@@ -356,11 +356,24 @@
     }
   }
 
+  function fmtGain(val, pct) {
+    if (val == null) return "—";
+    const sign  = val >= 0 ? "+" : "";
+    const color = val >= 0 ? "#4ade80" : "#f87171";
+    const pctStr = pct != null ? ` (${sign}${pct.toFixed(2)}%)` : "";
+    return `<span style="color:${color};font-weight:600">${sign}${fmt(val)}${pctStr}</span>`;
+  }
+
   function renderPortfolio(data) {
+    const gl = data.total_gain_loss;
+    const glHtml = gl != null
+      ? `<div class="stat"><div class="lbl">Total P&amp;L</div><div class="val" style="color:${gl >= 0 ? '#4ade80' : '#f87171'}">${gl >= 0 ? '+' : ''}${fmt(gl)}</div></div>`
+      : "";
     document.getElementById("portfolio-stats").innerHTML = `
       <div class="stat"><div class="lbl">Cash</div><div class="val">${fmt(data.cash)}</div></div>
       <div class="stat"><div class="lbl">Equity</div><div class="val">${fmt(data.equity_value)}</div></div>
       <div class="stat"><div class="lbl">Total</div><div class="val">${fmt(data.total_value)}</div></div>
+      ${glHtml}
     `;
     const tbody = document.getElementById("portfolio-body");
     tbody.innerHTML = "";
@@ -369,8 +382,10 @@
       tr.innerHTML = `
         <td><strong>${h.ticker}</strong></td>
         <td>${h.qty}</td>
+        <td style="color:#94a3b8">${fmt(h.buy_price)}</td>
         <td>${fmt(h.live_price)}</td>
         <td>${fmt(h.value)}</td>
+        <td>${fmtGain(h.gain_loss, h.gain_loss_pct)}</td>
       `;
       tbody.appendChild(tr);
     }

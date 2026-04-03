@@ -1,14 +1,22 @@
 """
 All database operations. Each function takes a Session and returns plain Python objects.
 """
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional, List
 from sqlalchemy.orm import Session
 
 from db.models import User, Portfolio, AnalysisSession, TradeHistory
 
-_SEED_HOLDINGS = {"AAPL": 10, "MSFT": 5, "JPM": 15}
 _SEED_CASH = 5_000.0
+
+# Buy prices are approximate prices from 6 months before the seed date (Oct 2025).
+# AAPL ~$226, MSFT ~$435, JPM ~$228 — gives a mix of gains and losses.
+_SEED_HOLDINGS = {
+    "AAPL": {"qty": 10, "buy_price": 226.00},
+    "MSFT": {"qty":  5, "buy_price": 435.00},
+    "JPM":  {"qty": 15, "buy_price": 228.00},
+}
+_SEED_BUY_DATE = datetime.now(timezone.utc) - timedelta(days=180)
 
 
 # ── User ──────────────────────────────────────────────────────────────────────
@@ -20,8 +28,14 @@ def get_or_create_user(db: Session, user_id: str) -> User:
     user = User(user_id=user_id, cash=_SEED_CASH)
     db.add(user)
     db.flush()
-    for ticker, qty in _SEED_HOLDINGS.items():
-        db.add(Portfolio(user_id=user_id, ticker=ticker, quantity=qty))
+    for ticker, info in _SEED_HOLDINGS.items():
+        db.add(Portfolio(
+            user_id=user_id,
+            ticker=ticker,
+            quantity=info["qty"],
+            buy_price=info["buy_price"],
+            buy_date=_SEED_BUY_DATE,
+        ))
     db.commit()
     db.refresh(user)
     return user
@@ -33,19 +47,39 @@ def get_portfolio(db: Session, user_id: str) -> dict:
     get_or_create_user(db, user_id)
     user = db.query(User).filter(User.user_id == user_id).first()
     rows = db.query(Portfolio).filter(Portfolio.user_id == user_id, Portfolio.quantity > 0).all()
-    return {"holdings": {r.ticker: r.quantity for r in rows}, "cash": user.cash}
+    holdings = {}
+    for r in rows:
+        holdings[r.ticker] = {
+            "qty": r.quantity,
+            "buy_price": r.buy_price,
+            "buy_date": r.buy_date.date().isoformat() if r.buy_date else None,
+        }
+    return {"holdings": holdings, "cash": user.cash}
 
 
-def _upsert_holding(db: Session, user_id: str, ticker: str, qty_delta: int) -> None:
+def _upsert_holding(
+    db: Session, user_id: str, ticker: str, qty_delta: int, buy_price: Optional[float] = None
+) -> None:
     holding = (
         db.query(Portfolio)
         .filter(Portfolio.user_id == user_id, Portfolio.ticker == ticker)
         .first()
     )
     if holding:
+        if qty_delta > 0 and buy_price is not None:
+            # Weighted average buy price when adding to an existing position
+            prev_qty = holding.quantity
+            prev_bp  = holding.buy_price or buy_price
+            holding.buy_price = (prev_bp * prev_qty + buy_price * qty_delta) / (prev_qty + qty_delta)
         holding.quantity += qty_delta
     else:
-        db.add(Portfolio(user_id=user_id, ticker=ticker, quantity=qty_delta))
+        db.add(Portfolio(
+            user_id=user_id,
+            ticker=ticker,
+            quantity=qty_delta,
+            buy_price=buy_price,
+            buy_date=datetime.now(timezone.utc),
+        ))
 
 
 # ── Analysis session ──────────────────────────────────────────────────────────
@@ -172,7 +206,7 @@ def record_trade(
         if user.cash < total:
             return {"status": "ERROR", "trade_id": row.id if row else None, "reason": "Insufficient funds."}
         user.cash -= total
-        _upsert_holding(db, user_id, ticker, qty)
+        _upsert_holding(db, user_id, ticker, qty, buy_price=price)
     else:
         user.cash += total
         _upsert_holding(db, user_id, ticker, -qty)

@@ -11,12 +11,19 @@ Usage:
     python -m db.reset_eval_user --user my_user  # resets a different user
 """
 import argparse
+from datetime import datetime, timezone, timedelta
 from db.engine import SessionLocal
 from db.models import TradeHistory, AnalysisSession, Portfolio, User
 
+SEED_BUY_DATE = datetime.now(timezone.utc) - timedelta(days=180)
+
 EVAL_USER_ID  = "eval_user"
 SEED_CASH     = 5_000.0
-SEED_HOLDINGS = {"AAPL": 10, "MSFT": 5, "JPM": 15}
+SEED_HOLDINGS = {
+    "AAPL": {"qty": 10, "buy_price": 226.00},
+    "MSFT": {"qty":  5, "buy_price": 435.00},
+    "JPM":  {"qty": 15, "buy_price": 228.00},
+}
 
 
 def reset_user(user_id: str) -> None:
@@ -53,9 +60,15 @@ def reset_user(user_id: str) -> None:
 
         db.flush()
 
-        # 5. Re-insert seed holdings
-        for ticker, qty in SEED_HOLDINGS.items():
-            db.add(Portfolio(user_id=user_id, ticker=ticker, quantity=qty))
+        # 5. Re-insert seed holdings with buy prices
+        for ticker, info in SEED_HOLDINGS.items():
+            db.add(Portfolio(
+                user_id=user_id,
+                ticker=ticker,
+                quantity=info["qty"],
+                buy_price=info["buy_price"],
+                buy_date=SEED_BUY_DATE,
+            ))
 
         db.commit()
         print(

@@ -120,6 +120,14 @@ FULL PORTFOLIO REBALANCE RULES (only when explicitly requested):
   - Focus on: reducing single-stock concentration, adding missing sectors, trimming overweight positions.
   - Do not churn the portfolio — only suggest changes with clear, specific justification.
 
+PERFORMANCE ANALYSIS:
+  Each holding in the portfolio snapshot includes buy_price and buy_date (the price and date when the position was opened).
+  Use these to compute:
+    return_pct  = (live_price - buy_price) / buy_price * 100
+    gain_loss   = (live_price - buy_price) * qty
+  You must fetch live prices before computing any return. Always show both $ and % for gain/loss.
+  Identify best and worst performers by return_pct, not by absolute dollar gain.
+
 ANALYSIS APPROACH:
 - Read the goal first. Only act if the portfolio genuinely needs to change.
 - Propose nothing if the goal is already met or the user only asks for information.
