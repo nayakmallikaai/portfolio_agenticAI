@@ -363,6 +363,10 @@ async def run_analysis(
             if isinstance(m, HumanMessage)
             or (isinstance(m, AIMessage) and not getattr(m, "tool_calls", None))
         ]
+        # Claude does not support assistant prefill — strip trailing AIMessages
+        # so the conversation always ends with a HumanMessage.
+        while clean_history and isinstance(clean_history[-1], AIMessage):
+            clean_history.pop()
 
         active_llm = llm_no_tools if (has_portfolio and has_prices) else llm_with_tools
         response = active_llm.invoke([sys_msg] + clean_history)

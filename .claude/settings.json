@@ -31,7 +31,8 @@
       "Bash(bash deployment_scripts/setup.sh)",
       "Bash(kubectl get:*)",
       "Bash(kubectl describe:*)",
-      "Bash(kubectl rollout:*)"
+      "Bash(kubectl rollout:*)",
+      "Bash(python -m eval.run_agent_eval --ids T018 --url http://localhost:8000 --user eval_user --no-sleep)"
     ]
   }
 }

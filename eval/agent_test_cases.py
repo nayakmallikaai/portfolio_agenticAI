@@ -415,10 +415,10 @@ AGENT_TEST_CASES: List[TestCase] = [
         ),
     ),
 
-    # A018 — Full rebalance total notional cap enforced (≤ 20% portfolio)
+    # A018 — Full rebalance: liquidation request pivots to incremental plan within 20% cap
     TestCase(
         id="A018",
-        description="Full rebalance plan must respect combined 20% notional cap",
+        description="Liquidation request under rebalance mode must pivot to an incremental approved plan",
         request={
             "mode": "goal",
             "goal": (
@@ -427,13 +427,19 @@ AGENT_TEST_CASES: List[TestCase] = [
             ),
         },
         checks=[
-            ShouldReject(),
+            RiskApproved(expected=True),
+            TradeCountAtMost(max_trades=5),
+            GetPricesBatchCalled(),
+            SummaryContains(
+                keywords=["20%", "cap", "cannot", "liquidat", "limit", "incremental", "exceed"],
+                description="Summary must explain why full liquidation was refused and describe the incremental plan",
+            ),
         ],
         notes=(
-            "Rebalance aggression guard — 'liquidate all and reinvest' is a major reconstruction, "
-            "not an incremental rebalance. The analyst should refuse and return 0 trades. "
-            "The auditor always approves an empty trade array, so risk_approved=True with 0 trades "
-            "is the correct outcome."
+            "Rebalance aggression guard — 'liquidate all' exceeds the 20% notional cap. "
+            "The analyst correctly refuses the full liquidation, explains the cap, and pivots "
+            "to a valid incremental rebalance of up to 5 trades within the limit. "
+            "Expecting 0 trades was wrong — the correct behavior is a valid incremental plan."
         ),
     ),
 
