@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Portfolio Agent — Agent Capability Suite (A001–A015)</title>
+<title>Portfolio Agent — Full Evaluation Suite (T001–T020 + A001–A015)</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -61,29 +61,29 @@
 </head>
 <body>
 <div class="container">
-  <h1>Portfolio Agent — Agent Capability Suite (A001–A015)</h1>
-  <div class="subtitle">Run at 2026-04-03 06:39 UTC &nbsp;·&nbsp;
-    3 tests &nbsp;·&nbsp;
-    <span style="color:#22c55e">2 passed</span> &nbsp;·&nbsp;
-    <span style="color:#ef4444">1 failed</span> &nbsp;·&nbsp;
-    <span style="color:#f59e0b">0 errors</span>
+  <h1>Portfolio Agent — Full Evaluation Suite (T001–T020 + A001–A015)</h1>
+  <div class="subtitle">Run at 2026-04-03 08:57 UTC &nbsp;·&nbsp;
+    4 tests &nbsp;·&nbsp;
+    <span style="color:#22c55e">1 passed</span> &nbsp;·&nbsp;
+    <span style="color:#ef4444">2 failed</span> &nbsp;·&nbsp;
+    <span style="color:#f59e0b">1 errors</span>
   </div>
 
   <div class="section-title">Metric Scorecard</div>
   <div class='scorecard'>
     <div class="metric-card">
       <div class="metric-label">Overall Score</div>
-      <div class="metric-value" style="color:#f59e0b">67%</div>
-      <div class='metric-sub'>2 / 3 tests passed</div>
+      <div class="metric-value" style="color:#ef4444">25%</div>
+      <div class='metric-sub'>1 / 4 tests passed</div>
     </div>
     <div class="metric-card">
       <div class="metric-label">Guardrail</div>
-      <div class="metric-value" style="color:#94a3b8">N/A</div>
+      <div class="metric-value" style="color:#ef4444">0%</div>
       
     </div>
     <div class="metric-card">
       <div class="metric-label">Tool Call</div>
-      <div class="metric-value" style="color:#22c55e">89%</div>
+      <div class="metric-value" style="color:#22c55e">100%</div>
       
     </div>
     <div class="metric-card">
@@ -103,12 +103,12 @@
     </div>
     <div class="metric-card">
       <div class="metric-label">Avg Context Precision</div>
-      <div class="metric-value" style="color:#ef4444">11%</div>
+      <div class="metric-value" style="color:#ef4444">8%</div>
       <div class='metric-sub'>LLM eval metric</div>
     </div>
     <div class="metric-card">
       <div class="metric-label">Avg Context Recall</div>
-      <div class="metric-value" style="color:#22c55e">89%</div>
+      <div class="metric-value" style="color:#f59e0b">78%</div>
       <div class='metric-sub'>LLM eval metric</div>
     </div>
     <div class="metric-card">
@@ -118,7 +118,7 @@
     </div>
     <div class="metric-card">
       <div class="metric-label">Avg Tool Calls</div>
-      <div class="metric-value" style="color:#60a5fa">2.7</div>
+      <div class="metric-value" style="color:#60a5fa">2.0</div>
       <div class='metric-sub'>per test</div>
     </div>
     <div class="metric-card">
@@ -128,7 +128,7 @@
     </div>
     <div class="metric-card">
       <div class="metric-label">Avg Response Time</div>
-      <div class="metric-value" style="color:#34d399">14.1s</div>
+      <div class="metric-value" style="color:#34d399">13.9s</div>
       <div class='metric-sub'>per test</div>
     </div></div>
 
@@ -164,81 +164,56 @@
       </thead>
       <tbody>
         
-          <tr class="test-row" onclick="toggleChecks('A001')">
-            <td><code>A001</code></td>
-            <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
-            <td style="max-width:300px;font-size:0.85rem">get_portfolio must be called before any get_live_price call</td>
-            <td style="color:#60a5fa">0%</td>
-            <td style="color:#a78bfa">100%</td>
-            <td style="color:#34d399">100%</td>
-            <td>4</td>
-            <td>1 / 15.1s</td>
-          </tr>
-          <tbody id="checks-A001" style="display:none">
-              <tr class="check-row">
-                <td colspan="2" style="padding-left:2rem">
-                  <span style="color:#22c55e;font-weight:700">✓</span>
-                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_portfolio' must be called
-                </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">'get_portfolio' found in log</td>
-              </tr>
-              <tr class="check-row">
-                <td colspan="2" style="padding-left:2rem">
-                  <span style="color:#22c55e;font-weight:700">✓</span>
-                  <span class="cat-badge cat-tool_call">tool_call</span> get_portfolio must be called before get_live_price
-                </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">portfolio order=0, first price order=1</td>
-              </tr>
-              <tr class="check-row">
-                <td colspan="2" style="padding-left:2rem">
-                  <span style="color:#22c55e;font-weight:700">✓</span>
-                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_live_price' must be called
-                </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">'get_live_price' found in log</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('A006')">
-            <td><code>A006</code></td>
+          <tr class="test-row" onclick="toggleChecks('T017')">
+            <td><code>T017</code></td>
             <td><span class="badge" style="background:#ef444420;color:#ef4444;border:1px solid #ef444440">FAIL</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Tool call count must stay within a reasonable bound (≤ 15 total)</td>
-            <td style="color:#60a5fa">33%</td>
-            <td style="color:#a78bfa">67%</td>
-            <td style="color:#34d399">100%</td>
-            <td>2</td>
-            <td>1 / 17.2s</td>
-          </tr>
-          <tbody id="checks-A006" style="display:none">
-              <tr class="check-row">
-                <td colspan="2" style="padding-left:2rem">
-                  <span style="color:#22c55e;font-weight:700">✓</span>
-                  <span class="cat-badge cat-tool_call">tool_call</span> Total tool calls must be in [2, 15]
-                </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">2 tool call(s) (allowed [2, 15])</td>
-              </tr>
-              <tr class="check-row">
-                <td colspan="2" style="padding-left:2rem">
-                  <span style="color:#22c55e;font-weight:700">✓</span>
-                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_portfolio' must be called
-                </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">'get_portfolio' found in log</td>
-              </tr>
-              <tr class="check-row">
-                <td colspan="2" style="padding-left:2rem">
-                  <span style="color:#ef4444;font-weight:700">✗</span>
-                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_live_price' must be called
-                </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Tools called: ['get_portfolio', 'get_prices_batch']</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('A021')">
-            <td><code>A021</code></td>
-            <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Targeted single-ticker query must use get_live_price, not get_prices_batch</td>
+            <td style="max-width:300px;font-size:0.85rem">Identifying the worst performer requires fetching prices for all holdings</td>
             <td style="color:#60a5fa">0%</td>
             <td style="color:#a78bfa">100%</td>
             <td style="color:#34d399">80%</td>
             <td>2</td>
-            <td>1 / 10.0s</td>
+            <td>1 / 9.8s</td>
           </tr>
-          <tbody id="checks-A021" style="display:none">
+          <tbody id="checks-T017" style="display:none">
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#ef4444;font-weight:700">✗</span>
+                  <span class="cat-badge cat-general">general</span> Response must propose >= 1 trade(s)
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">0 trade(s) found (need >= 1)</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-relevance">relevance</span> Summary must identify a worst performer and recommend a SELL
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Keyword 'worst' found</td>
+              </tr></tbody>
+          <tr class="test-row" onclick="toggleChecks('T018')">
+            <td><code>T018</code></td>
+            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
+            <td style="max-width:300px;font-size:0.85rem">Requesting 5 trades at once must be reduced to ≤3 and eventually approved</td>
+            <td style="color:#60a5fa">N/A</td>
+            <td style="color:#a78bfa">N/A</td>
+            <td style="color:#34d399">N/A</td>
+            <td>0</td>
+            <td>0 / 13.8s</td>
+          </tr>
+          <tbody id="checks-T018" style="display:none">
+              <tr class="check-row">
+                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
+              </tr></tbody>
+          <tr class="test-row" onclick="toggleChecks('A016')">
+            <td><code>A016</code></td>
+            <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
+            <td style="max-width:300px;font-size:0.85rem">Full rebalance request must use get_prices_batch, not sequential get_live_price</td>
+            <td style="color:#60a5fa">13%</td>
+            <td style="color:#a78bfa">33%</td>
+            <td style="color:#34d399">100%</td>
+            <td>2</td>
+            <td>1 / 13.6s</td>
+          </tr>
+          <tbody id="checks-A016" style="display:none">
               <tr class="check-row">
                 <td colspan="2" style="padding-left:2rem">
                   <span style="color:#22c55e;font-weight:700">✓</span>
@@ -249,23 +224,34 @@
               <tr class="check-row">
                 <td colspan="2" style="padding-left:2rem">
                   <span style="color:#22c55e;font-weight:700">✓</span>
-                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_live_price' must be called
+                  <span class="cat-badge cat-tool_call">tool_call</span> get_prices_batch must be called (holistic / full rebalance)
                 </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">'get_live_price' found in log</td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">get_prices_batch called 1 time(s)</td>
               </tr>
               <tr class="check-row">
                 <td colspan="2" style="padding-left:2rem">
                   <span style="color:#22c55e;font-weight:700">✓</span>
-                  <span class="cat-badge cat-tool_call">tool_call</span> get_prices_batch must NOT be called for targeted queries
+                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_live_price' must NOT be called
                 </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">get_prices_batch absent — correct for targeted query</td>
-              </tr>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">'get_live_price' absent</td>
+              </tr></tbody>
+          <tr class="test-row" onclick="toggleChecks('A018')">
+            <td><code>A018</code></td>
+            <td><span class="badge" style="background:#ef444420;color:#ef4444;border:1px solid #ef444440">FAIL</span></td>
+            <td style="max-width:300px;font-size:0.85rem">Full rebalance plan must respect combined 20% notional cap</td>
+            <td style="color:#60a5fa">10%</td>
+            <td style="color:#a78bfa">100%</td>
+            <td style="color:#34d399">100%</td>
+            <td>2</td>
+            <td>1 / 18.5s</td>
+          </tr>
+          <tbody id="checks-A018" style="display:none">
               <tr class="check-row">
                 <td colspan="2" style="padding-left:2rem">
-                  <span style="color:#22c55e;font-weight:700">✓</span>
-                  <span class="cat-badge cat-relevance">relevance</span> Summary must mention one of: ['aapl', 'apple']
+                  <span style="color:#ef4444;font-weight:700">✗</span>
+                  <span class="cat-badge cat-guardrail">guardrail</span> Response must propose 0 trades
                 </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Keyword 'aapl' found</td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">3 trade(s) — guardrail failed</td>
               </tr></tbody>
       </tbody>
     </table>
@@ -286,8 +272,8 @@
 </div>
 
 <script>
-const radarRaw  = {"labels": ["Guardrail", "Tool Call", "Retry", "Grounding", "Faithfulness", "Precision", "Recall", "Relevance"], "values": [0, 89, 0, 0, 0, 11, 89, 93]};
-const barRaw    = {"labels": ["A001", "A006", "A021"], "colours": ["#22c55e", "#ef4444", "#22c55e"], "values": [1, 0, 1]};
+const radarRaw  = {"labels": ["Guardrail", "Tool Call", "Retry", "Grounding", "Faithfulness", "Precision", "Recall", "Relevance"], "values": [0, 100, 0, 0, 0, 8, 78, 93]};
+const barRaw    = {"labels": ["T017", "T018", "A016", "A018"], "colours": ["#ef4444", "#f59e0b", "#22c55e", "#ef4444"], "values": [0, 0, 1, 0]};
 
 // ── Radar chart ──────────────────────────────────────────────────────────────
 new Chart(document.getElementById("radarChart"), {
