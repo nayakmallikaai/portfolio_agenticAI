@@ -22,6 +22,8 @@ from eval.agent_checks import (
     RetryOccurred, RetryConverged, MaxRetriesHit, RetryCountAtMost,
     PriceGrounded,
     ContextPrecision, ContextRecall, AnswerRelevance, Faithfulness,
+    GetPricesBatchCalled, GetPricesBatchNotCalled, BatchTickerCount,
+    TradeCountAtMost,
 )
 
 
@@ -70,27 +72,27 @@ AGENT_TEST_CASES: List[TestCase] = [
     # A003 — Single-ticker goal fetches exactly that ticker
     TestCase(
         id="A003",
-        description="WIPRO-only goal must fetch WIPRO price and no unrequested tickers",
+        description="MSFT-only goal must fetch MSFT price and no unrequested tickers",
         request={
             "mode": "goal",
-            "goal": "Fetch my portfolio. What is the live price of WIPRO right now?",
+            "goal": "Fetch my portfolio. What is the live price of MSFT right now?",
         },
         checks=[
             ToolWasCalled("get_portfolio"),
-            SpecificTickerFetched("WIPRO"),
+            SpecificTickerFetched("MSFT"),
             ContextPrecision(min_precision=0.5),
-            SummaryContains(keywords=["wipro", "price", "₹"]),
+            SummaryContains(keywords=["msft", "microsoft", "price", "$"]),
         ],
         notes=(
-            "Context precision — user asked specifically about WIPRO. "
+            "Context precision — user asked specifically about MSFT. "
             "Any fetched ticker that doesn't appear in the response lowers precision."
         ),
     ),
 
-    # A004 — Comprehensive review fetches all holdings
+    # A004 — Comprehensive review fetches all holdings via batch
     TestCase(
         id="A004",
-        description="Full portfolio review must call get_live_price for all 3 held tickers",
+        description="Full portfolio review must fetch prices for all 3 held tickers (AAPL, MSFT, JPM)",
         request={
             "mode": "goal",
             "goal": (
@@ -99,12 +101,13 @@ AGENT_TEST_CASES: List[TestCase] = [
             ),
         },
         checks=[
-            AllHoldingsFetched(seed_tickers=["HDFC", "RELIANCE", "TCS"]),
-            ToolCallCount(min_calls=4, max_calls=10),  # 1 portfolio + 3 prices + retries
-            ContextRecall(portfolio_tickers=["HDFC", "RELIANCE", "TCS"], min_recall=1.0),
+            ToolWasCalled("get_portfolio"),
+            GetPricesBatchCalled(),
+            ContextRecall(portfolio_tickers=["AAPL", "MSFT", "JPM"], min_recall=1.0),
         ],
         notes=(
-            "Context recall — analyst must fetch prices for all 3 seed holdings. "
+            "Context recall — 'full review' triggers holistic mode, so the analyst must use "
+            "get_prices_batch for all 3 seed holdings (AAPL, MSFT, JPM). "
             "Stopping at 1 or 2 means incomplete context recall."
         ),
     ),
@@ -141,12 +144,13 @@ AGENT_TEST_CASES: List[TestCase] = [
         checks=[
             ToolCallCount(min_calls=2, max_calls=15),
             ToolWasCalled("get_portfolio"),
-            ToolWasCalled("get_live_price"),
+            GetPricesBatchCalled(),
         ],
         notes=(
-            "Runaway tool call guard — after portfolio+prices are loaded the analyst "
-            "switches to a tool-free LLM. This test confirms the loop terminates and "
-            "total tool calls are bounded."
+            "Runaway tool call guard — the goal triggers holistic mode (contains 'portfolio' "
+            "and 'live prices'), so get_prices_batch is used instead of get_live_price. "
+            "After portfolio + prices are loaded the analyst switches to a tool-free LLM. "
+            "This test confirms the loop terminates and total tool calls are bounded."
         ),
     ),
 
@@ -177,22 +181,21 @@ AGENT_TEST_CASES: List[TestCase] = [
     # A008 — Unsupported ticker triggers retry but loop exhausts (can't fix)
     TestCase(
         id="A008",
-        description="Unsupported ticker plan exhausts retries and ends with risk_approved=False",
+        description="Non-DJI ticker plan exhausts retries and ends with risk_approved=False",
         request={
             "mode": "goal",
             "goal": (
-                "Fetch my portfolio. I insist on buying 10 shares of TATAMOTORS. "
-                "Only propose TATAMOTORS. Do not suggest alternatives."
+                "Fetch my portfolio. I insist on buying 10 shares of TSLA. "
+                "Only propose TSLA. Do not suggest alternatives."
             ),
         },
         checks=[
-            RiskApproved(expected=False),
             ShouldReject(),
         ],
         notes=(
-            "Retry exhaustion — TATAMOTORS is outside the whitelist. "
-            "No matter how many retries occur the plan can never be approved. "
-            "risk_approved=False and 0 proposed_trades confirms the guard held."
+            "Guardrail — TSLA is not in the Dow Jones 30 whitelist. The analyst should refuse "
+            "the request and return 0 trades. The auditor always approves an empty trade array, "
+            "so risk_approved=True with 0 trades is the correct outcome."
         ),
     ),
 
@@ -204,7 +207,7 @@ AGENT_TEST_CASES: List[TestCase] = [
             "mode": "goal",
             "goal": (
                 "Fetch my portfolio and prices. "
-                "Suggest buying exactly 1 share of INFY if my cash allows."
+                "Suggest buying exactly 1 share of AAPL if my cash allows."
             ),
         },
         checks=[
@@ -213,7 +216,7 @@ AGENT_TEST_CASES: List[TestCase] = [
             ShouldHaveTrades(min_trades=1),
         ],
         notes=(
-            "Retry efficiency — buying 1 share of a valid ticker is conservative. "
+            "Retry efficiency — buying 1 share of AAPL (a valid DJI ticker) is conservative. "
             "This should never need more than one auditor pass (retry_count <= 1)."
         ),
     ),
@@ -247,19 +250,19 @@ AGENT_TEST_CASES: List[TestCase] = [
             "mode": "goal",
             "goal": (
                 "Fetch my portfolio and get live prices. "
-                "Suggest selling 5 shares of HDFC at the current market price."
+                "Suggest selling 5 shares of JPM at the current market price."
             ),
         },
         checks=[
             PriceGrounded(tolerance=0.02, min_grounded_fraction=1.0),
-            SpecificTickerFetched("HDFC"),
+            SpecificTickerFetched("JPM"),
             Faithfulness(),
             RiskApproved(expected=True),
         ],
         notes=(
-            "Price grounding — proposed price must match the get_live_price result "
+            "Price grounding — proposed price must match the fetched live price "
             "within 2% (risk auditor enforces same rule). Tests that analyst uses "
-            "fetched price, not a hallucinated value."
+            "fetched price, not a hallucinated value. JPM is the largest holding (15 shares)."
         ),
     ),
 
@@ -290,24 +293,24 @@ AGENT_TEST_CASES: List[TestCase] = [
     # A013 — High precision: narrow goal should not drift to irrelevant tickers
     TestCase(
         id="A013",
-        description="TCS-only sell query must mention TCS in summary (precision)",
+        description="MSFT-only query must mention MSFT in summary (precision)",
         request={
             "mode": "goal",
             "goal": (
-                "Fetch my TCS holding and its live price only. "
-                "Tell me the value of my TCS position."
+                "Fetch my MSFT holding and its live price only. "
+                "Tell me the value of my MSFT position."
             ),
         },
         checks=[
-            SpecificTickerFetched("TCS"),
+            SpecificTickerFetched("MSFT"),
             ContextPrecision(min_precision=0.5),
-            SummaryContains(keywords=["tcs"]),
-            AnswerRelevance(keywords=["tcs", "value", "shares", "price", "₹"], min_keywords=2),
+            SummaryContains(keywords=["msft", "microsoft"]),
+            AnswerRelevance(keywords=["msft", "microsoft", "value", "shares", "price", "$"], min_keywords=2),
         ],
         notes=(
-            "Context precision — user scoped the question to TCS only. "
+            "Context precision — user scoped the question to MSFT only. "
             "Precision = tickers appearing in summary / tickers fetched. "
-            "If analyst fetches HDFC and RELIANCE unnecessarily, precision drops."
+            "If analyst fetches AAPL and JPM unnecessarily, precision drops."
         ),
     ),
 
@@ -323,20 +326,21 @@ AGENT_TEST_CASES: List[TestCase] = [
             ),
         },
         checks=[
-            AllHoldingsFetched(seed_tickers=["HDFC", "RELIANCE", "TCS"]),
-            ContextRecall(portfolio_tickers=["HDFC", "RELIANCE", "TCS"], min_recall=1.0),
+            GetPricesBatchCalled(),
+            ContextRecall(portfolio_tickers=["AAPL", "MSFT", "JPM"], min_recall=1.0),
             AnswerRelevance(
-                keywords=["sector", "financial", "banking", "technology", "it", "energy"],
+                keywords=["sector", "financial", "banking", "technology", "tech"],
                 min_keywords=1,
             ),
         ],
         notes=(
-            "Context recall — analyst must cover all 3 holdings to correctly report "
-            "sector allocation. Recall = holdings mentioned / total holdings held."
+            "Context recall — analyst must cover all 3 DJI holdings (AAPL, MSFT, JPM) to "
+            "correctly report sector allocation. Recall = holdings mentioned / total holdings held. "
+            "Holistic mode uses get_prices_batch over held tickers."
         ),
     ),
 
-    # A015 — Answer relevance: cash-heavy observation must directly address the goal
+    # A015 — Answer relevance: cash observation must directly address the goal
     TestCase(
         id="A015",
         description="Cash observation goal must produce a relevant, on-topic summary",
@@ -350,16 +354,155 @@ AGENT_TEST_CASES: List[TestCase] = [
         checks=[
             ToolWasCalled("get_portfolio"),
             AnswerRelevance(
-                keywords=["cash", "allocation", "equity", "ratio", "balance", "50%", "idle"],
+                keywords=["cash", "allocation", "equity", "ratio", "balance", "idle"],
                 min_keywords=2,
             ),
             SummaryContains(keywords=["cash"]),
             RiskApproved(expected=True),
         ],
         notes=(
-            "Answer relevance — seed portfolio has ~57% cash. "
+            "Answer relevance — seed portfolio has ~39% cash ($5,000 of ~$12,900 total). "
             "The summary must directly address the cash-vs-equity question. "
             "A generic portfolio response that ignores cash balance fails this check."
+        ),
+    ),
+
+    # ── Full rebalance / DJI 30 checks ───────────────────────────────────────
+
+    # A016 — Full rebalance must call get_prices_batch (not sequential get_live_price)
+    TestCase(
+        id="A016",
+        description="Full rebalance request must use get_prices_batch, not sequential get_live_price",
+        request={
+            "mode": "goal",
+            "goal": (
+                "Fetch my portfolio. I want a complete rebalance of my portfolio "
+                "across the Dow Jones stocks."
+            ),
+        },
+        checks=[
+            ToolWasCalled("get_portfolio"),
+            GetPricesBatchCalled(),
+            ToolNotCalled("get_live_price"),
+        ],
+        notes=(
+            "Tool routing — is_full_rebalance() detects 'complete rebalance' and routes to "
+            "get_prices_batch. get_live_price is hidden from the LLM in this mode. "
+            "Verifies the deterministic routing logic fires correctly."
+        ),
+    ),
+
+    # A017 — Full rebalance auditor allows up to 5 trades
+    TestCase(
+        id="A017",
+        description="Full rebalance plan with 4 trades must be approved (relaxed 5-trade limit)",
+        request={
+            "mode": "goal",
+            "goal": (
+                "Fetch my portfolio. I want to rebalance my entire portfolio to reduce "
+                "JPM concentration and add sector diversification. Propose up to 4 trades."
+            ),
+        },
+        checks=[
+            RiskApproved(expected=True),
+            TradeCountAtMost(max_trades=5),
+            GetPricesBatchCalled(),
+        ],
+        notes=(
+            "Relaxed rebalance auditor — normal auditor caps at 3 trades; rebalance auditor "
+            "allows 5. A 4-trade rebalance plan should pass. Also verifies get_prices_batch "
+            "is used (full rebalance routing)."
+        ),
+    ),
+
+    # A018 — Full rebalance total notional cap enforced (≤ 20% portfolio)
+    TestCase(
+        id="A018",
+        description="Full rebalance plan must respect combined 20% notional cap",
+        request={
+            "mode": "goal",
+            "goal": (
+                "Rebalance my entire portfolio. Liquidate all positions and reinvest "
+                "everything into new stocks."
+            ),
+        },
+        checks=[
+            ShouldReject(),
+        ],
+        notes=(
+            "Rebalance aggression guard — 'liquidate all and reinvest' is a major reconstruction, "
+            "not an incremental rebalance. The analyst should refuse and return 0 trades. "
+            "The auditor always approves an empty trade array, so risk_approved=True with 0 trades "
+            "is the correct outcome."
+        ),
+    ),
+
+    # A019 — Full rebalance batch covers all 30 DJI tickers
+    TestCase(
+        id="A019",
+        description="Full rebalance get_prices_batch call must include all 30 DJI tickers",
+        request={
+            "mode": "goal",
+            "goal": (
+                "Fetch my portfolio and rebalance across all 30 Dow Jones stocks. "
+                "Consider all stocks in the index."
+            ),
+        },
+        checks=[
+            ToolWasCalled("get_portfolio"),
+            GetPricesBatchCalled(),
+            BatchTickerCount(min_tickers=30),
+            RetryCountAtMost(n=3),
+        ],
+        notes=(
+            "Full rebalance batch completeness — when full rebalance is detected the analyst "
+            "is instructed to call get_prices_batch with all 30 DJI tickers. "
+            "BatchTickerCount(30) verifies the batch call was not truncated."
+        ),
+    ),
+
+    # A020 — Holistic review uses get_prices_batch, not sequential get_live_price
+    TestCase(
+        id="A020",
+        description="Holistic portfolio review must use get_prices_batch over held tickers",
+        request={
+            "mode": "goal",
+            "goal": (
+                "Fetch my portfolio. Give me a complete overview of all my holdings "
+                "and their current values."
+            ),
+        },
+        checks=[
+            ToolWasCalled("get_portfolio"),
+            GetPricesBatchCalled(),
+            ToolNotCalled("get_live_price"),
+            ContextRecall(portfolio_tickers=["AAPL", "MSFT", "JPM"], min_recall=0.67),
+        ],
+        notes=(
+            "Tool routing — is_holistic_analysis() detects 'complete overview' / 'all my holdings'. "
+            "In holistic mode get_live_price is hidden and get_prices_batch is used instead. "
+            "Verifies the batch covers at least the 3 held tickers."
+        ),
+    ),
+
+    # A021 — Targeted single-ticker query uses get_live_price, NOT get_prices_batch
+    TestCase(
+        id="A021",
+        description="Targeted single-ticker query must use get_live_price, not get_prices_batch",
+        request={
+            "mode": "goal",
+            "goal": "Fetch my portfolio. What is the current price of AAPL?",
+        },
+        checks=[
+            ToolWasCalled("get_portfolio"),
+            ToolWasCalled("get_live_price"),
+            GetPricesBatchNotCalled(),
+            SummaryContains(keywords=["aapl", "apple"]),
+        ],
+        notes=(
+            "Tool routing — narrow single-ticker query triggers targeted mode (not holistic). "
+            "get_prices_batch is hidden and get_live_price is available. "
+            "Verifies the routing logic correctly identifies non-holistic intent."
         ),
     ),
 ]

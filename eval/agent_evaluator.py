@@ -37,6 +37,8 @@ from eval.agent_checks import (
     RetryOccurred, RetryConverged, MaxRetriesHit, RetryCountAtMost,
     PriceGrounded,
     ContextPrecision, ContextRecall, AnswerRelevance, Faithfulness,
+    GetPricesBatchCalled, GetPricesBatchNotCalled, BatchTickerCount,
+    TradeCountAtMost,
 )
 
 
@@ -80,11 +82,14 @@ def _tool_log(response: dict) -> List[dict]:
 
 
 def _fetched_tickers(response: dict) -> List[str]:
-    return [
-        e["ticker"].upper()
-        for e in _tool_log(response)
-        if e.get("name") == "get_live_price" and e.get("ticker")
-    ]
+    """Return all tickers for which a price was fetched (single or batch)."""
+    tickers = []
+    for e in _tool_log(response):
+        if e.get("name") == "get_live_price" and e.get("ticker"):
+            tickers.append(e["ticker"].upper())
+        elif e.get("name") == "get_prices_batch" and e.get("tickers"):
+            tickers.extend(t.upper() for t in e["tickers"])
+    return tickers
 
 
 def _summary(response: dict) -> str:
@@ -356,6 +361,49 @@ def _evaluate_check(check: Any, response: dict) -> CheckResult:
             "faithfulness",
         )
 
+    # ── Batch pricing checks ──────────────────────────────────────────────────
+    if isinstance(check, GetPricesBatchCalled):
+        batch_calls = [e for e in log if e.get("name") == "get_prices_batch"]
+        passed = len(batch_calls) > 0
+        return CheckResult(
+            check.description, passed,
+            f"get_prices_batch called {len(batch_calls)} time(s)" if passed
+            else "get_prices_batch was never called",
+            "tool_call",
+        )
+
+    if isinstance(check, GetPricesBatchNotCalled):
+        batch_calls = [e for e in log if e.get("name") == "get_prices_batch"]
+        passed = len(batch_calls) == 0
+        return CheckResult(
+            check.description, passed,
+            "get_prices_batch absent — correct for targeted query" if passed
+            else f"get_prices_batch was called {len(batch_calls)} time(s) — should not be",
+            "tool_call",
+        )
+
+    if isinstance(check, BatchTickerCount):
+        batch_calls = [e for e in log if e.get("name") == "get_prices_batch"]
+        if not batch_calls:
+            return CheckResult(check.description, False, "get_prices_batch was never called", "tool_call")
+        max_count = max(len(e.get("tickers") or []) for e in batch_calls)
+        passed = max_count >= check.min_tickers
+        return CheckResult(
+            check.description, passed,
+            f"Largest batch call had {max_count} tickers (need >= {check.min_tickers})",
+            "tool_call",
+        )
+
+    # ── Trade count check ─────────────────────────────────────────────────────
+    if isinstance(check, TradeCountAtMost):
+        n = len(trades)
+        passed = n <= check.max_trades
+        return CheckResult(
+            check.description, passed,
+            f"{n} trade(s) proposed (limit <= {check.max_trades})",
+            "guardrail",
+        )
+
     return CheckResult(str(check), False, "Unknown check type", "general")
 
 
@@ -404,8 +452,8 @@ def run_test(case: TestCase, base_url: str, user_id: str) -> CaseResult:
     else:
         cp = None
 
-    # Context recall over seed holdings
-    seed = {"HDFC", "RELIANCE", "TCS"}
+    # Context recall over seed holdings (DJI 30 seed: AAPL, MSFT, JPM)
+    seed = {"AAPL", "MSFT", "JPM"}
     mentioned = seed & {t.upper() for t in seed if t.lower() in summary}
     mentioned |= {t["ticker"].upper() for t in trades if t.get("ticker", "").upper() in seed}
     cr = len(mentioned) / len(seed)

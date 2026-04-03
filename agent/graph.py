@@ -56,8 +56,7 @@ def is_holistic_analysis(mode: str, goal: str) -> bool:
     if mode == "feedback":
         return True
     keywords = [
-        "all", "entire", "whole", "complete", "overall", "everything",
-        "portfolio", "rebalanc", "diversif", "review", "assess", "health",
+        "all", "entire", "whole", "complete", "overall", "everything", "rebalanc", "diversif", "review", "assess", "health",
         "overview", "worst", "best performer", "sector", "allocation",
         "weight", "each", "every", "compare",
     ]
@@ -304,14 +303,16 @@ async def run_analysis(
             held = list(state["portfolio_snapshot"].get("holdings", {}).keys())
             if full_rebalance:
                 data_section = (
-                    f"Portfolio loaded: {json.dumps(state['portfolio_snapshot'])}\n"
-                    f"This is a FULL PORTFOLIO REBALANCE. Call get_prices_batch with ALL 30 "
-                    f"Dow Jones tickers: {json.dumps(_DJI_30_TICKERS)}"
+                    f"Portfolio already fetched — do NOT call get_portfolio again.\n"
+                    f"Portfolio: {json.dumps(state['portfolio_snapshot'])}\n"
+                    f"This is a FULL PORTFOLIO REBALANCE. Your ONLY next action is to call "
+                    f"get_prices_batch with ALL 30 Dow Jones tickers: {json.dumps(_DJI_30_TICKERS)}"
                 )
             else:
                 data_section = (
-                    f"Portfolio loaded: {json.dumps(state['portfolio_snapshot'])}\n"
-                    f"Call get_prices_batch with your holding tickers: {json.dumps(held)}"
+                    f"Portfolio already fetched — do NOT call get_portfolio again.\n"
+                    f"Portfolio: {json.dumps(state['portfolio_snapshot'])}\n"
+                    f"Your ONLY next action is to call get_prices_batch with these tickers: {json.dumps(held)}"
                 )
         else:
             if full_rebalance:

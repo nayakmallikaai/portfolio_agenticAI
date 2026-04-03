@@ -1,0 +1,151 @@
+name: Eval Suite
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: portfolio
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/portfolio
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Start app
+        run: |
+          uvicorn main:app --host 0.0.0.0 --port 8000 \
+            > /tmp/app.log 2>&1 &
+          echo $! > /tmp/app.pid
+
+      - name: Wait for app to be ready
+        run: |
+          echo "Waiting for app to start..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8000/ > /dev/null 2>&1; then
+              echo "App ready after ${i}s"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "App failed to start. Logs:"
+          cat /tmp/app.log
+          exit 1
+
+      - name: Run eval suite
+        id: eval
+        run: |
+          set -o pipefail
+          python -m eval.run_agent_eval \
+            --url http://localhost:8000 \
+            --user eval_user \
+            --out eval/report.html \
+            2>&1 | tee /tmp/eval_output.txt
+        continue-on-error: true
+
+      - name: Write job summary
+        if: always()
+        run: |
+          python - <<'EOF'
+          import re, os
+
+          ansi = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+
+          with open("/tmp/eval_output.txt") as f:
+              raw = f.read()
+          txt = ansi.sub("", raw)
+
+          # Overall line: "Total: 21 | PASS: 16 | FAIL: 5 | ERROR: 0 | Score: 76%"
+          m = re.search(
+              r"Total:\s*(\d+).*?PASS:\s*(\d+).*?FAIL:\s*(\d+).*?ERROR:\s*(\d+).*?Score:\s*(\d+)%",
+              txt,
+          )
+
+          sha = os.environ.get("GITHUB_SHA", "")[:7]
+          ref = os.environ.get("GITHUB_REF_NAME", "main")
+          run_url = (
+              f"https://github.com/{os.environ.get('GITHUB_REPOSITORY','')}"
+              f"/actions/runs/{os.environ.get('GITHUB_RUN_ID','')}"
+          )
+
+          summary = os.environ.get("GITHUB_STEP_SUMMARY", "/dev/null")
+          with open(summary, "w") as out:
+              if not m:
+                  out.write("## ⚠️ Eval Suite — could not parse results\n")
+                  out.write("```\n" + txt[-2000:] + "\n```\n")
+              else:
+                  total, passed, failed, errors, score = m.groups()
+                  score_i = int(score)
+                  icon = "✅" if score_i >= 70 else "❌"
+                  out.write(f"## {icon} Eval Suite — {score}%  `{sha}` → `{ref}`\n\n")
+                  out.write(
+                      f"| | Count |\n"
+                      f"|---|---|\n"
+                      f"| ✅ Pass  | **{passed}** |\n"
+                      f"| ❌ Fail  | **{failed}** |\n"
+                      f"| ⚠️ Error | **{errors}** |\n"
+                      f"| Total   | **{total}** |\n\n"
+                  )
+
+                  # Per-test table — grab rows like "A001   PASS   ..."
+                  rows = re.findall(
+                      r"^\s*((?:T|A)\d+)\s+(PASS|FAIL|ERROR)\s+.*?  (.+)$",
+                      txt, re.MULTILINE,
+                  )
+                  if rows:
+                      out.write("### Per-test results\n\n")
+                      out.write("| ID | Result | Description |\n")
+                      out.write("|---|---|---|\n")
+                      for tid, score_col, desc in rows:
+                          emoji = {"PASS": "✅", "FAIL": "❌", "ERROR": "⚠️"}.get(score_col, "")
+                          out.write(f"| `{tid}` | {emoji} {score_col} | {desc.strip()} |\n")
+                      out.write("\n")
+
+                  out.write(f"[Full run logs]({run_url})\n")
+          EOF
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-report-${{ github.sha }}
+          path: eval/report.html
+          retention-days: 90
+
+      - name: Upload app log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-log-${{ github.sha }}
+          path: /tmp/app.log
+          retention-days: 7
+
+      - name: Fail job if eval did not pass
+        if: steps.eval.outcome == 'failure'
+        run: exit 1

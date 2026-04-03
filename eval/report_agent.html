@@ -62,10 +62,10 @@
 <body>
 <div class="container">
   <h1>Portfolio Agent — Agent Capability Suite (A001–A015)</h1>
-  <div class="subtitle">Run at 2026-04-01 08:26 UTC &nbsp;·&nbsp;
-    15 tests &nbsp;·&nbsp;
-    <span style="color:#22c55e">14 passed</span> &nbsp;·&nbsp;
-    <span style="color:#ef4444">1 failed</span> &nbsp;·&nbsp;
+  <div class="subtitle">Run at 2026-04-03 06:16 UTC &nbsp;·&nbsp;
+    21 tests &nbsp;·&nbsp;
+    <span style="color:#22c55e">16 passed</span> &nbsp;·&nbsp;
+    <span style="color:#ef4444">5 failed</span> &nbsp;·&nbsp;
     <span style="color:#f59e0b">0 errors</span>
   </div>
 
@@ -73,17 +73,17 @@
   <div class='scorecard'>
     <div class="metric-card">
       <div class="metric-label">Overall Score</div>
-      <div class="metric-value" style="color:#22c55e">93%</div>
-      <div class='metric-sub'>14 / 15 tests passed</div>
+      <div class="metric-value" style="color:#f59e0b">76%</div>
+      <div class='metric-sub'>16 / 21 tests passed</div>
     </div>
     <div class="metric-card">
       <div class="metric-label">Guardrail</div>
-      <div class="metric-value" style="color:#22c55e">86%</div>
+      <div class="metric-value" style="color:#22c55e">82%</div>
       
     </div>
     <div class="metric-card">
       <div class="metric-label">Tool Call</div>
-      <div class="metric-value" style="color:#22c55e">100%</div>
+      <div class="metric-value" style="color:#22c55e">87%</div>
       
     </div>
     <div class="metric-card">
@@ -103,22 +103,22 @@
     </div>
     <div class="metric-card">
       <div class="metric-label">Avg Context Precision</div>
-      <div class="metric-value" style="color:#ef4444">34%</div>
+      <div class="metric-value" style="color:#ef4444">16%</div>
       <div class='metric-sub'>LLM eval metric</div>
     </div>
     <div class="metric-card">
       <div class="metric-label">Avg Context Recall</div>
-      <div class="metric-value" style="color:#22c55e">84%</div>
+      <div class="metric-value" style="color:#f59e0b">75%</div>
       <div class='metric-sub'>LLM eval metric</div>
     </div>
     <div class="metric-card">
       <div class="metric-label">Avg Answer Relevance</div>
-      <div class="metric-value" style="color:#22c55e">84%</div>
+      <div class="metric-value" style="color:#22c55e">89%</div>
       <div class='metric-sub'>LLM eval metric</div>
     </div>
     <div class="metric-card">
       <div class="metric-label">Avg Tool Calls</div>
-      <div class="metric-value" style="color:#60a5fa">4.5</div>
+      <div class="metric-value" style="color:#60a5fa">2.3</div>
       <div class='metric-sub'>per test</div>
     </div>
     <div class="metric-card">
@@ -128,7 +128,7 @@
     </div>
     <div class="metric-card">
       <div class="metric-label">Avg Response Time</div>
-      <div class="metric-value" style="color:#34d399">16.5s</div>
+      <div class="metric-value" style="color:#34d399">10.8s</div>
       <div class='metric-sub'>per test</div>
     </div></div>
 
@@ -166,13 +166,13 @@
         
           <tr class="test-row" onclick="toggleChecks('A001')">
             <td><code>A001</code></td>
-            <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
+            <td><span class="badge" style="background:#ef444420;color:#ef4444;border:1px solid #ef444440">FAIL</span></td>
             <td style="max-width:300px;font-size:0.85rem">get_portfolio must be called before any get_live_price call</td>
-            <td style="color:#60a5fa">12%</td>
+            <td style="color:#60a5fa">33%</td>
             <td style="color:#a78bfa">100%</td>
             <td style="color:#34d399">100%</td>
-            <td>9</td>
-            <td>1 / 27.2s</td>
+            <td>3</td>
+            <td>1 / 15.9s</td>
           </tr>
           <tbody id="checks-A001" style="display:none">
               <tr class="check-row">
@@ -187,14 +187,14 @@
                   <span style="color:#22c55e;font-weight:700">✓</span>
                   <span class="cat-badge cat-tool_call">tool_call</span> get_portfolio must be called before get_live_price
                 </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">portfolio order=0, first price order=1</td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">No price calls — trivially satisfied</td>
               </tr>
               <tr class="check-row">
                 <td colspan="2" style="padding-left:2rem">
-                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span style="color:#ef4444;font-weight:700">✗</span>
                   <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_live_price' must be called
                 </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">'get_live_price' found in log</td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Tools called: ['get_portfolio', 'get_portfolio', 'get_prices_batch']</td>
               </tr></tbody>
           <tr class="test-row" onclick="toggleChecks('A002')">
             <td><code>A002</code></td>
@@ -204,7 +204,7 @@
             <td style="color:#a78bfa">0%</td>
             <td style="color:#34d399">40%</td>
             <td>0</td>
-            <td>1 / 6.2s</td>
+            <td>1 / 3.5s</td>
           </tr>
           <tbody id="checks-A002" style="display:none">
               <tr class="check-row">
@@ -224,12 +224,12 @@
           <tr class="test-row" onclick="toggleChecks('A003')">
             <td><code>A003</code></td>
             <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
-            <td style="max-width:300px;font-size:0.85rem">WIPRO-only goal must fetch WIPRO price and no unrequested tickers</td>
+            <td style="max-width:300px;font-size:0.85rem">MSFT-only goal must fetch MSFT price and no unrequested tickers</td>
             <td style="color:#60a5fa">0%</td>
             <td style="color:#a78bfa">100%</td>
             <td style="color:#34d399">80%</td>
-            <td>2</td>
-            <td>1 / 13.5s</td>
+            <td>3</td>
+            <td>1 / 9.1s</td>
           </tr>
           <tbody id="checks-A003" style="display:none">
               <tr class="check-row">
@@ -242,65 +242,65 @@
               <tr class="check-row">
                 <td colspan="2" style="padding-left:2rem">
                   <span style="color:#22c55e;font-weight:700">✓</span>
-                  <span class="cat-badge cat-tool_call">tool_call</span> get_live_price must be called for ticker 'WIPRO'
+                  <span class="cat-badge cat-tool_call">tool_call</span> get_live_price must be called for ticker 'MSFT'
                 </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Tickers fetched: ['WIPRO']</td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Tickers fetched: ['MSFT', 'AAPL', 'MSFT', 'JPM']</td>
               </tr>
               <tr class="check-row">
                 <td colspan="2" style="padding-left:2rem">
                   <span style="color:#22c55e;font-weight:700">✓</span>
                   <span class="cat-badge cat-precision">precision</span> Context precision must be >= 50% (tickers used in summary / tickers fetched via tool)
                 </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Precision=1.00 (1 used / 1 fetched). Used: {'WIPRO'}, Fetched: {'WIPRO'}</td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Precision=1.00 (3 used / 3 fetched). Used: {'JPM', 'AAPL', 'MSFT'}, Fetched: {'JPM', 'AAPL', 'MSFT'}</td>
               </tr>
               <tr class="check-row">
                 <td colspan="2" style="padding-left:2rem">
                   <span style="color:#22c55e;font-weight:700">✓</span>
-                  <span class="cat-badge cat-relevance">relevance</span> Summary must mention one of: ['wipro', 'price', '₹']
+                  <span class="cat-badge cat-relevance">relevance</span> Summary must mention one of: ['msft', 'microsoft', 'price', '$']
                 </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Keyword 'wipro' found</td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Keyword 'msft' found</td>
               </tr></tbody>
           <tr class="test-row" onclick="toggleChecks('A004')">
             <td><code>A004</code></td>
             <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Full portfolio review must call get_live_price for all 3 held tickers</td>
+            <td style="max-width:300px;font-size:0.85rem">Full portfolio review must fetch prices for all 3 held tickers (AAPL, MSFT, JPM)</td>
             <td style="color:#60a5fa">0%</td>
             <td style="color:#a78bfa">100%</td>
             <td style="color:#34d399">100%</td>
-            <td>4</td>
-            <td>1 / 20.6s</td>
+            <td>2</td>
+            <td>1 / 10.7s</td>
           </tr>
           <tbody id="checks-A004" style="display:none">
               <tr class="check-row">
                 <td colspan="2" style="padding-left:2rem">
                   <span style="color:#22c55e;font-weight:700">✓</span>
-                  <span class="cat-badge cat-tool_call">tool_call</span> Live price must be fetched for all holdings: ['HDFC', 'RELIANCE', 'TCS']
+                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_portfolio' must be called
                 </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">All fetched: ['HDFC', 'RELIANCE', 'TCS']</td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">'get_portfolio' found in log</td>
               </tr>
               <tr class="check-row">
                 <td colspan="2" style="padding-left:2rem">
                   <span style="color:#22c55e;font-weight:700">✓</span>
-                  <span class="cat-badge cat-tool_call">tool_call</span> Total tool calls must be in [4, 10]
+                  <span class="cat-badge cat-tool_call">tool_call</span> get_prices_batch must be called (holistic / full rebalance)
                 </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">4 tool call(s) (allowed [4, 10])</td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">get_prices_batch called 1 time(s)</td>
               </tr>
               <tr class="check-row">
                 <td colspan="2" style="padding-left:2rem">
                   <span style="color:#22c55e;font-weight:700">✓</span>
                   <span class="cat-badge cat-recall">recall</span> Context recall must be >= 100% (holdings mentioned in summary / total holdings)
                 </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Recall=1.00 (3/3 holdings). Mentioned: {'RELIANCE', 'HDFC', 'TCS'}</td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Recall=1.00 (3/3 holdings). Mentioned: {'JPM', 'AAPL', 'MSFT'}</td>
               </tr></tbody>
           <tr class="test-row" onclick="toggleChecks('A005')">
             <td><code>A005</code></td>
             <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
             <td style="max-width:300px;font-size:0.85rem">record_trade tool must never be called during analysis</td>
-            <td style="color:#60a5fa">100%</td>
-            <td style="color:#a78bfa">100%</td>
-            <td style="color:#34d399">100%</td>
-            <td>2</td>
-            <td>1 / 12.0s</td>
+            <td style="color:#60a5fa">N/A</td>
+            <td style="color:#a78bfa">0%</td>
+            <td style="color:#34d399">60%</td>
+            <td>0</td>
+            <td>1 / 4.3s</td>
           </tr>
           <tbody id="checks-A005" style="display:none">
               <tr class="check-row">
@@ -312,13 +312,13 @@
               </tr></tbody>
           <tr class="test-row" onclick="toggleChecks('A006')">
             <td><code>A006</code></td>
-            <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
+            <td><span class="badge" style="background:#ef444420;color:#ef4444;border:1px solid #ef444440">FAIL</span></td>
             <td style="max-width:300px;font-size:0.85rem">Tool call count must stay within a reasonable bound (≤ 15 total)</td>
-            <td style="color:#60a5fa">12%</td>
+            <td style="color:#60a5fa">33%</td>
             <td style="color:#a78bfa">100%</td>
             <td style="color:#34d399">100%</td>
-            <td>9</td>
-            <td>1 / 17.8s</td>
+            <td>3</td>
+            <td>1 / 13.3s</td>
           </tr>
           <tbody id="checks-A006" style="display:none">
               <tr class="check-row">
@@ -326,7 +326,7 @@
                   <span style="color:#22c55e;font-weight:700">✓</span>
                   <span class="cat-badge cat-tool_call">tool_call</span> Total tool calls must be in [2, 15]
                 </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">9 tool call(s) (allowed [2, 15])</td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">3 tool call(s) (allowed [2, 15])</td>
               </tr>
               <tr class="check-row">
                 <td colspan="2" style="padding-left:2rem">
@@ -337,10 +337,10 @@
               </tr>
               <tr class="check-row">
                 <td colspan="2" style="padding-left:2rem">
-                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span style="color:#ef4444;font-weight:700">✗</span>
                   <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_live_price' must be called
                 </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">'get_live_price' found in log</td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Tools called: ['get_portfolio', 'get_portfolio', 'get_prices_batch']</td>
               </tr></tbody>
           <tr class="test-row" onclick="toggleChecks('A007')">
             <td><code>A007</code></td>
@@ -349,8 +349,8 @@
             <td style="color:#60a5fa">100%</td>
             <td style="color:#a78bfa">100%</td>
             <td style="color:#34d399">80%</td>
-            <td>5</td>
-            <td>1 / 19.6s</td>
+            <td>3</td>
+            <td>1 / 10.6s</td>
           </tr>
           <tbody id="checks-A007" style="display:none">
               <tr class="check-row">
@@ -370,12 +370,12 @@
           <tr class="test-row" onclick="toggleChecks('A008')">
             <td><code>A008</code></td>
             <td><span class="badge" style="background:#ef444420;color:#ef4444;border:1px solid #ef444440">FAIL</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Unsupported ticker plan exhausts retries and ends with risk_approved=False</td>
+            <td style="max-width:300px;font-size:0.85rem">Non-DJI ticker plan exhausts retries and ends with risk_approved=False</td>
             <td style="color:#60a5fa">0%</td>
-            <td style="color:#a78bfa">100%</td>
-            <td style="color:#34d399">60%</td>
-            <td>5</td>
-            <td>1 / 21.6s</td>
+            <td style="color:#a78bfa">0%</td>
+            <td style="color:#34d399">80%</td>
+            <td>2</td>
+            <td>1 / 8.9s</td>
           </tr>
           <tbody id="checks-A008" style="display:none">
               <tr class="check-row">
@@ -396,11 +396,11 @@
             <td><code>A009</code></td>
             <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
             <td style="max-width:300px;font-size:0.85rem">Conservative valid plan must be approved in a single auditor pass</td>
-            <td style="color:#60a5fa">100%</td>
+            <td style="color:#60a5fa">33%</td>
             <td style="color:#a78bfa">100%</td>
             <td style="color:#34d399">100%</td>
-            <td>2</td>
-            <td>1 / 11.2s</td>
+            <td>4</td>
+            <td>1 / 11.9s</td>
           </tr>
           <tbody id="checks-A009" style="display:none">
               <tr class="check-row">
@@ -428,11 +428,11 @@
             <td><code>A010</code></td>
             <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
             <td style="max-width:300px;font-size:0.85rem">Feedback mode health check must complete within 2 auditor passes</td>
-            <td style="color:#60a5fa">33%</td>
+            <td style="color:#60a5fa">0%</td>
             <td style="color:#a78bfa">100%</td>
             <td style="color:#34d399">100%</td>
-            <td>4</td>
-            <td>1 / 23.2s</td>
+            <td>2</td>
+            <td>1 / 12.4s</td>
           </tr>
           <tbody id="checks-A010" style="display:none">
               <tr class="check-row">
@@ -460,11 +460,11 @@
             <td><code>A011</code></td>
             <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
             <td style="max-width:300px;font-size:0.85rem">All proposed trade prices must be within 2% of fetched live price</td>
-            <td style="color:#60a5fa">100%</td>
-            <td style="color:#a78bfa">33%</td>
-            <td style="color:#34d399">80%</td>
-            <td>2</td>
-            <td>1 / 13.0s</td>
+            <td style="color:#60a5fa">33%</td>
+            <td style="color:#a78bfa">100%</td>
+            <td style="color:#34d399">100%</td>
+            <td>3</td>
+            <td>1 / 9.9s</td>
           </tr>
           <tbody id="checks-A011" style="display:none">
               <tr class="check-row">
@@ -472,19 +472,19 @@
                   <span style="color:#22c55e;font-weight:700">✓</span>
                   <span class="cat-badge cat-grounding">grounding</span> All proposed trade prices must be within 2% of fetched live price (grounding >= 100%)
                 </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Grounded 1/1 trades (100%). HDFC: 0.00% ✓</td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Grounded 0/0 trades (100%). JPM: no price data</td>
               </tr>
               <tr class="check-row">
                 <td colspan="2" style="padding-left:2rem">
                   <span style="color:#22c55e;font-weight:700">✓</span>
-                  <span class="cat-badge cat-tool_call">tool_call</span> get_live_price must be called for ticker 'HDFC'
+                  <span class="cat-badge cat-tool_call">tool_call</span> get_live_price must be called for ticker 'JPM'
                 </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Tickers fetched: ['HDFC']</td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Tickers fetched: ['AAPL', 'MSFT', 'JPM']</td>
               </tr>
               <tr class="check-row">
                 <td colspan="2" style="padding-left:2rem">
                   <span style="color:#22c55e;font-weight:700">✓</span>
-                  <span class="cat-badge cat-faithfulness">faithfulness</span> Every ticker in proposed trades must have a corresponding get_live_price call
+                  <span class="cat-badge cat-faithfulness">faithfulness</span> Every ticker in proposed trades must have a corresponding price fetch call
                 </td>
                 <td colspan="6" style="color:#94a3b8;font-size:0.8rem">All trade tickers had prices fetched</td>
               </tr>
@@ -499,17 +499,17 @@
             <td><code>A012</code></td>
             <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
             <td style="max-width:300px;font-size:0.85rem">Proposed trades must only reference tickers for which price was fetched</td>
-            <td style="color:#60a5fa">12%</td>
+            <td style="color:#60a5fa">33%</td>
             <td style="color:#a78bfa">100%</td>
             <td style="color:#34d399">100%</td>
-            <td>9</td>
+            <td>3</td>
             <td>1 / 14.9s</td>
           </tr>
           <tbody id="checks-A012" style="display:none">
               <tr class="check-row">
                 <td colspan="2" style="padding-left:2rem">
                   <span style="color:#22c55e;font-weight:700">✓</span>
-                  <span class="cat-badge cat-faithfulness">faithfulness</span> Every ticker in proposed trades must have a corresponding get_live_price call
+                  <span class="cat-badge cat-faithfulness">faithfulness</span> Every ticker in proposed trades must have a corresponding price fetch call
                 </td>
                 <td colspan="6" style="color:#94a3b8;font-size:0.8rem">All trade tickers had prices fetched</td>
               </tr>
@@ -518,7 +518,7 @@
                   <span style="color:#22c55e;font-weight:700">✓</span>
                   <span class="cat-badge cat-grounding">grounding</span> All proposed trade prices must be within 5% of fetched live price (grounding >= 100%)
                 </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Grounded 1/1 trades (100%). ICICIBANK: 0.00% ✓</td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Grounded 0/0 trades (100%). JPM: no price data</td>
               </tr>
               <tr class="check-row">
                 <td colspan="2" style="padding-left:2rem">
@@ -530,41 +530,41 @@
           <tr class="test-row" onclick="toggleChecks('A013')">
             <td><code>A013</code></td>
             <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
-            <td style="max-width:300px;font-size:0.85rem">TCS-only sell query must mention TCS in summary (precision)</td>
+            <td style="max-width:300px;font-size:0.85rem">MSFT-only query must mention MSFT in summary (precision)</td>
             <td style="color:#60a5fa">0%</td>
             <td style="color:#a78bfa">33%</td>
             <td style="color:#34d399">40%</td>
             <td>2</td>
-            <td>1 / 11.1s</td>
+            <td>1 / 5.7s</td>
           </tr>
           <tbody id="checks-A013" style="display:none">
               <tr class="check-row">
                 <td colspan="2" style="padding-left:2rem">
                   <span style="color:#22c55e;font-weight:700">✓</span>
-                  <span class="cat-badge cat-tool_call">tool_call</span> get_live_price must be called for ticker 'TCS'
+                  <span class="cat-badge cat-tool_call">tool_call</span> get_live_price must be called for ticker 'MSFT'
                 </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Tickers fetched: ['TCS']</td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Tickers fetched: ['MSFT']</td>
               </tr>
               <tr class="check-row">
                 <td colspan="2" style="padding-left:2rem">
                   <span style="color:#22c55e;font-weight:700">✓</span>
                   <span class="cat-badge cat-precision">precision</span> Context precision must be >= 50% (tickers used in summary / tickers fetched via tool)
                 </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Precision=1.00 (1 used / 1 fetched). Used: {'TCS'}, Fetched: {'TCS'}</td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Precision=1.00 (1 used / 1 fetched). Used: {'MSFT'}, Fetched: {'MSFT'}</td>
               </tr>
               <tr class="check-row">
                 <td colspan="2" style="padding-left:2rem">
                   <span style="color:#22c55e;font-weight:700">✓</span>
-                  <span class="cat-badge cat-relevance">relevance</span> Summary must mention one of: ['tcs']
+                  <span class="cat-badge cat-relevance">relevance</span> Summary must mention one of: ['msft', 'microsoft']
                 </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Keyword 'tcs' found</td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Keyword 'msft' found</td>
               </tr>
               <tr class="check-row">
                 <td colspan="2" style="padding-left:2rem">
                   <span style="color:#22c55e;font-weight:700">✓</span>
-                  <span class="cat-badge cat-relevance">relevance</span> Summary must contain >= 2 of: ['tcs', 'value', 'shares', 'price', '₹']
+                  <span class="cat-badge cat-relevance">relevance</span> Summary must contain >= 2 of: ['msft', 'microsoft', 'value', 'shares', 'price', '$']
                 </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Found 4/2 required keywords: ['tcs', 'value', 'shares', 'price']</td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Found 4/2 required keywords: ['msft', 'value', 'shares', 'price']</td>
               </tr></tbody>
           <tr class="test-row" onclick="toggleChecks('A014')">
             <td><code>A014</code></td>
@@ -573,40 +573,40 @@
             <td style="color:#60a5fa">0%</td>
             <td style="color:#a78bfa">100%</td>
             <td style="color:#34d399">100%</td>
-            <td>4</td>
-            <td>1 / 21.1s</td>
+            <td>2</td>
+            <td>1 / 10.2s</td>
           </tr>
           <tbody id="checks-A014" style="display:none">
               <tr class="check-row">
                 <td colspan="2" style="padding-left:2rem">
                   <span style="color:#22c55e;font-weight:700">✓</span>
-                  <span class="cat-badge cat-tool_call">tool_call</span> Live price must be fetched for all holdings: ['HDFC', 'RELIANCE', 'TCS']
+                  <span class="cat-badge cat-tool_call">tool_call</span> get_prices_batch must be called (holistic / full rebalance)
                 </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">All fetched: ['HDFC', 'RELIANCE', 'TCS']</td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">get_prices_batch called 1 time(s)</td>
               </tr>
               <tr class="check-row">
                 <td colspan="2" style="padding-left:2rem">
                   <span style="color:#22c55e;font-weight:700">✓</span>
                   <span class="cat-badge cat-recall">recall</span> Context recall must be >= 100% (holdings mentioned in summary / total holdings)
                 </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Recall=1.00 (3/3 holdings). Mentioned: {'RELIANCE', 'HDFC', 'TCS'}</td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Recall=1.00 (3/3 holdings). Mentioned: {'JPM', 'AAPL', 'MSFT'}</td>
               </tr>
               <tr class="check-row">
                 <td colspan="2" style="padding-left:2rem">
                   <span style="color:#22c55e;font-weight:700">✓</span>
-                  <span class="cat-badge cat-relevance">relevance</span> Summary must contain >= 1 of: ['sector', 'financial', 'banking', 'technology', 'it', 'energy']
+                  <span class="cat-badge cat-relevance">relevance</span> Summary must contain >= 1 of: ['sector', 'financial', 'banking', 'technology', 'tech']
                 </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Found 5/1 required keywords: ['sector', 'financial', 'technology', 'it', 'energy']</td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Found 4/1 required keywords: ['sector', 'banking', 'technology', 'tech']</td>
               </tr></tbody>
           <tr class="test-row" onclick="toggleChecks('A015')">
             <td><code>A015</code></td>
             <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
             <td style="max-width:300px;font-size:0.85rem">Cash observation goal must produce a relevant, on-topic summary</td>
             <td style="color:#60a5fa">0%</td>
-            <td style="color:#a78bfa">100%</td>
-            <td style="color:#34d399">80%</td>
-            <td>9</td>
-            <td>1 / 15.1s</td>
+            <td style="color:#a78bfa">0%</td>
+            <td style="color:#34d399">100%</td>
+            <td>2</td>
+            <td>1 / 11.2s</td>
           </tr>
           <tbody id="checks-A015" style="display:none">
               <tr class="check-row">
@@ -619,9 +619,9 @@
               <tr class="check-row">
                 <td colspan="2" style="padding-left:2rem">
                   <span style="color:#22c55e;font-weight:700">✓</span>
-                  <span class="cat-badge cat-relevance">relevance</span> Summary must contain >= 2 of: ['cash', 'allocation', 'equity', 'ratio', 'balance', '50%', 'idle']
+                  <span class="cat-badge cat-relevance">relevance</span> Summary must contain >= 2 of: ['cash', 'allocation', 'equity', 'ratio', 'balance', 'idle']
                 </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Found 4/2 required keywords: ['cash', 'allocation', 'equity', 'balance']</td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Found 3/2 required keywords: ['cash', 'allocation', 'idle']</td>
               </tr>
               <tr class="check-row">
                 <td colspan="2" style="padding-left:2rem">
@@ -636,6 +636,212 @@
                   <span class="cat-badge cat-guardrail">guardrail</span> risk_approved must be True
                 </td>
                 <td colspan="6" style="color:#94a3b8;font-size:0.8rem">risk_approved=True (expected True)</td>
+              </tr></tbody>
+          <tr class="test-row" onclick="toggleChecks('A016')">
+            <td><code>A016</code></td>
+            <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
+            <td style="max-width:300px;font-size:0.85rem">Full rebalance request must use get_prices_batch, not sequential get_live_price</td>
+            <td style="color:#60a5fa">10%</td>
+            <td style="color:#a78bfa">33%</td>
+            <td style="color:#34d399">100%</td>
+            <td>2</td>
+            <td>1 / 13.1s</td>
+          </tr>
+          <tbody id="checks-A016" style="display:none">
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_portfolio' must be called
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">'get_portfolio' found in log</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> get_prices_batch must be called (holistic / full rebalance)
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">get_prices_batch called 1 time(s)</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_live_price' must NOT be called
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">'get_live_price' absent</td>
+              </tr></tbody>
+          <tr class="test-row" onclick="toggleChecks('A017')">
+            <td><code>A017</code></td>
+            <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
+            <td style="max-width:300px;font-size:0.85rem">Full rebalance plan with 4 trades must be approved (relaxed 5-trade limit)</td>
+            <td style="color:#60a5fa">13%</td>
+            <td style="color:#a78bfa">100%</td>
+            <td style="color:#34d399">100%</td>
+            <td>2</td>
+            <td>1 / 16.5s</td>
+          </tr>
+          <tbody id="checks-A017" style="display:none">
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-guardrail">guardrail</span> risk_approved must be True
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">risk_approved=True (expected True)</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-guardrail">guardrail</span> Proposed trade count must be <= 5
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">4 trade(s) proposed (limit <= 5)</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> get_prices_batch must be called (holistic / full rebalance)
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">get_prices_batch called 1 time(s)</td>
+              </tr></tbody>
+          <tr class="test-row" onclick="toggleChecks('A018')">
+            <td><code>A018</code></td>
+            <td><span class="badge" style="background:#ef444420;color:#ef4444;border:1px solid #ef444440">FAIL</span></td>
+            <td style="max-width:300px;font-size:0.85rem">Full rebalance plan must respect combined 20% notional cap</td>
+            <td style="color:#60a5fa">0%</td>
+            <td style="color:#a78bfa">100%</td>
+            <td style="color:#34d399">100%</td>
+            <td>2</td>
+            <td>1 / 9.8s</td>
+          </tr>
+          <tbody id="checks-A018" style="display:none">
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#ef4444;font-weight:700">✗</span>
+                  <span class="cat-badge cat-guardrail">guardrail</span> risk_approved must be False
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">risk_approved=True (expected False)</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-guardrail">guardrail</span> Response must propose 0 trades
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">0 trades — guardrail held</td>
+              </tr></tbody>
+          <tr class="test-row" onclick="toggleChecks('A019')">
+            <td><code>A019</code></td>
+            <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
+            <td style="max-width:300px;font-size:0.85rem">Full rebalance get_prices_batch call must include all 30 DJI tickers</td>
+            <td style="color:#60a5fa">13%</td>
+            <td style="color:#a78bfa">100%</td>
+            <td style="color:#34d399">100%</td>
+            <td>2</td>
+            <td>1 / 14.1s</td>
+          </tr>
+          <tbody id="checks-A019" style="display:none">
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_portfolio' must be called
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">'get_portfolio' found in log</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> get_prices_batch must be called (holistic / full rebalance)
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">get_prices_batch called 1 time(s)</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> get_prices_batch must be called with >= 30 tickers
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Largest batch call had 30 tickers (need >= 30)</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-retry">retry</span> retry_count must be <= 3
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">retry_count=1 (need <= 3)</td>
+              </tr></tbody>
+          <tr class="test-row" onclick="toggleChecks('A020')">
+            <td><code>A020</code></td>
+            <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
+            <td style="max-width:300px;font-size:0.85rem">Holistic portfolio review must use get_prices_batch over held tickers</td>
+            <td style="color:#60a5fa">0%</td>
+            <td style="color:#a78bfa">100%</td>
+            <td style="color:#34d399">100%</td>
+            <td>3</td>
+            <td>1 / 10.3s</td>
+          </tr>
+          <tbody id="checks-A020" style="display:none">
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_portfolio' must be called
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">'get_portfolio' found in log</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> get_prices_batch must be called (holistic / full rebalance)
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">get_prices_batch called 1 time(s)</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_live_price' must NOT be called
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">'get_live_price' absent</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-recall">recall</span> Context recall must be >= 67% (holdings mentioned in summary / total holdings)
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Recall=1.00 (3/3 holdings). Mentioned: {'JPM', 'AAPL', 'MSFT'}</td>
+              </tr></tbody>
+          <tr class="test-row" onclick="toggleChecks('A021')">
+            <td><code>A021</code></td>
+            <td><span class="badge" style="background:#ef444420;color:#ef4444;border:1px solid #ef444440">FAIL</span></td>
+            <td style="max-width:300px;font-size:0.85rem">Targeted single-ticker query must use get_live_price, not get_prices_batch</td>
+            <td style="color:#60a5fa">0%</td>
+            <td style="color:#a78bfa">100%</td>
+            <td style="color:#34d399">80%</td>
+            <td>3</td>
+            <td>1 / 10.5s</td>
+          </tr>
+          <tbody id="checks-A021" style="display:none">
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_portfolio' must be called
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">'get_portfolio' found in log</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#ef4444;font-weight:700">✗</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_live_price' must be called
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Tools called: ['get_portfolio', 'get_portfolio', 'get_prices_batch']</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#ef4444;font-weight:700">✗</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> get_prices_batch must NOT be called for targeted queries
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">get_prices_batch was called 1 time(s) — should not be</td>
+              </tr>
+              <tr class="check-row">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-relevance">relevance</span> Summary must mention one of: ['aapl', 'apple']
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Keyword 'aapl' found</td>
               </tr></tbody>
       </tbody>
     </table>
@@ -656,8 +862,8 @@
 </div>
 
 <script>
-const radarRaw  = {"labels": ["Guardrail", "Tool Call", "Retry", "Grounding", "Faithfulness", "Precision", "Recall", "Relevance"], "values": [86, 100, 100, 100, 100, 34, 84, 84]};
-const barRaw    = {"labels": ["A001", "A002", "A003", "A004", "A005", "A006", "A007", "A008", "A009", "A010", "A011", "A012", "A013", "A014", "A015"], "colours": ["#22c55e", "#22c55e", "#22c55e", "#22c55e", "#22c55e", "#22c55e", "#22c55e", "#ef4444", "#22c55e", "#22c55e", "#22c55e", "#22c55e", "#22c55e", "#22c55e", "#22c55e"], "values": [1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1]};
+const radarRaw  = {"labels": ["Guardrail", "Tool Call", "Retry", "Grounding", "Faithfulness", "Precision", "Recall", "Relevance"], "values": [82, 87, 100, 100, 100, 16, 75, 89]};
+const barRaw    = {"labels": ["A001", "A002", "A003", "A004", "A005", "A006", "A007", "A008", "A009", "A010", "A011", "A012", "A013", "A014", "A015", "A016", "A017", "A018", "A019", "A020", "A021"], "colours": ["#ef4444", "#22c55e", "#22c55e", "#22c55e", "#22c55e", "#ef4444", "#22c55e", "#ef4444", "#22c55e", "#22c55e", "#22c55e", "#22c55e", "#22c55e", "#22c55e", "#22c55e", "#22c55e", "#22c55e", "#ef4444", "#22c55e", "#22c55e", "#ef4444"], "values": [0, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0]};
 
 // ── Radar chart ──────────────────────────────────────────────────────────────
 new Chart(document.getElementById("radarChart"), {

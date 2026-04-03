@@ -64,7 +64,7 @@ class SpecificTickerFetched:
 @dataclass
 class AllHoldingsFetched:
     """Assert get_live_price was called for every ticker in the seed portfolio."""
-    seed_tickers: List[str] = field(default_factory=lambda: ["HDFC", "RELIANCE", "TCS"])
+    seed_tickers: List[str] = field(default_factory=lambda: ["AAPL", "MSFT", "JPM"])
     description: str = ""
     def __post_init__(self):
         if not self.description:
@@ -168,7 +168,7 @@ class ContextRecall:
     Measures whether the analyst covered every holding in its analysis.
     Pass threshold: >= min_recall.
     """
-    portfolio_tickers: List[str] = field(default_factory=lambda: ["HDFC", "RELIANCE", "TCS"])
+    portfolio_tickers: List[str] = field(default_factory=lambda: ["AAPL", "MSFT", "JPM"])
     min_recall: float = 0.67   # must mention at least 2 of 3 holdings
     description: str = ""
     def __post_init__(self):
@@ -202,5 +202,45 @@ class Faithfulness:
     its live price fetched via tool (no hallucinated tickers in trades).
     """
     description: str = (
-        "Every ticker in proposed trades must have a corresponding get_live_price call"
+        "Every ticker in proposed trades must have a corresponding price fetch call"
     )
+
+
+# ── Batch pricing checks (DJI 30 / full rebalance) ───────────────────────────
+
+@dataclass
+class GetPricesBatchCalled:
+    """Assert get_prices_batch was called at least once."""
+    description: str = "get_prices_batch must be called (holistic / full rebalance)"
+
+
+@dataclass
+class GetPricesBatchNotCalled:
+    """Assert get_prices_batch was NOT called (targeted single-ticker queries)."""
+    description: str = "get_prices_batch must NOT be called for targeted queries"
+
+
+@dataclass
+class BatchTickerCount:
+    """
+    Assert the get_prices_batch call included at least `min_tickers` tickers.
+    For full rebalance this should be 30 (all DJI tickers).
+    """
+    min_tickers: int
+    description: str = ""
+    def __post_init__(self):
+        if not self.description:
+            self.description = f"get_prices_batch must be called with >= {self.min_tickers} tickers"
+
+
+# ── Trade count checks ────────────────────────────────────────────────────────
+
+@dataclass
+class TradeCountAtMost:
+    """Assert the proposed_trades list contains at most `max_trades` entries."""
+    max_trades: int
+    description: str = ""
+    def __post_init__(self):
+        if not self.description:
+            self.description = f"Proposed trade count must be <= {self.max_trades}"
+

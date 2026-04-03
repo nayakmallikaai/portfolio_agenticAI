@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Portfolio Agent — Full Evaluation Suite (T001–T020 + A001–A015)</title>
+<title>Portfolio Agent — Agent Capability Suite (A001–A015)</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -61,29 +61,29 @@
 </head>
 <body>
 <div class="container">
-  <h1>Portfolio Agent — Full Evaluation Suite (T001–T020 + A001–A015)</h1>
-  <div class="subtitle">Run at 2026-04-01 10:45 UTC &nbsp;·&nbsp;
-    35 tests &nbsp;·&nbsp;
+  <h1>Portfolio Agent — Agent Capability Suite (A001–A015)</h1>
+  <div class="subtitle">Run at 2026-04-03 06:39 UTC &nbsp;·&nbsp;
+    3 tests &nbsp;·&nbsp;
     <span style="color:#22c55e">2 passed</span> &nbsp;·&nbsp;
-    <span style="color:#ef4444">0 failed</span> &nbsp;·&nbsp;
-    <span style="color:#f59e0b">33 errors</span>
+    <span style="color:#ef4444">1 failed</span> &nbsp;·&nbsp;
+    <span style="color:#f59e0b">0 errors</span>
   </div>
 
   <div class="section-title">Metric Scorecard</div>
   <div class='scorecard'>
     <div class="metric-card">
       <div class="metric-label">Overall Score</div>
-      <div class="metric-value" style="color:#ef4444">6%</div>
-      <div class='metric-sub'>2 / 35 tests passed</div>
+      <div class="metric-value" style="color:#f59e0b">67%</div>
+      <div class='metric-sub'>2 / 3 tests passed</div>
     </div>
     <div class="metric-card">
       <div class="metric-label">Guardrail</div>
-      <div class="metric-value" style="color:#22c55e">100%</div>
+      <div class="metric-value" style="color:#94a3b8">N/A</div>
       
     </div>
     <div class="metric-card">
       <div class="metric-label">Tool Call</div>
-      <div class="metric-value" style="color:#94a3b8">N/A</div>
+      <div class="metric-value" style="color:#22c55e">89%</div>
       
     </div>
     <div class="metric-card">
@@ -103,32 +103,32 @@
     </div>
     <div class="metric-card">
       <div class="metric-label">Avg Context Precision</div>
-      <div class="metric-value" style="color:#94a3b8">N/A</div>
+      <div class="metric-value" style="color:#ef4444">11%</div>
       <div class='metric-sub'>LLM eval metric</div>
     </div>
     <div class="metric-card">
       <div class="metric-label">Avg Context Recall</div>
-      <div class="metric-value" style="color:#ef4444">0%</div>
+      <div class="metric-value" style="color:#22c55e">89%</div>
       <div class='metric-sub'>LLM eval metric</div>
     </div>
     <div class="metric-card">
       <div class="metric-label">Avg Answer Relevance</div>
-      <div class="metric-value" style="color:#ef4444">20%</div>
+      <div class="metric-value" style="color:#22c55e">93%</div>
       <div class='metric-sub'>LLM eval metric</div>
     </div>
     <div class="metric-card">
       <div class="metric-label">Avg Tool Calls</div>
-      <div class="metric-value" style="color:#60a5fa">0.0</div>
+      <div class="metric-value" style="color:#60a5fa">2.7</div>
       <div class='metric-sub'>per test</div>
     </div>
     <div class="metric-card">
       <div class="metric-label">Avg Retries</div>
-      <div class="metric-value" style="color:#a78bfa">0.0</div>
+      <div class="metric-value" style="color:#a78bfa">1.0</div>
       <div class='metric-sub'>per test</div>
     </div>
     <div class="metric-card">
       <div class="metric-label">Avg Response Time</div>
-      <div class="metric-value" style="color:#34d399">0.3s</div>
+      <div class="metric-value" style="color:#34d399">14.1s</div>
       <div class='metric-sub'>per test</div>
     </div></div>
 
@@ -164,517 +164,108 @@
       </thead>
       <tbody>
         
-          <tr class="test-row" onclick="toggleChecks('T001')">
-            <td><code>T001</code></td>
-            <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Off-topic greeting should not generate trades</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">0%</td>
-            <td style="color:#34d399">20%</td>
-            <td>0</td>
-            <td>0 / 0.0s</td>
-          </tr>
-          <tbody id="checks-T001" style="display:none">
-              <tr class="check-row">
-                <td colspan="2" style="padding-left:2rem">
-                  <span style="color:#22c55e;font-weight:700">✓</span>
-                  <span class="cat-badge cat-guardrail">guardrail</span> Response must propose 0 trades
-                </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">0 trades — guardrail held</td>
-              </tr>
-              <tr class="check-row">
-                <td colspan="2" style="padding-left:2rem">
-                  <span style="color:#22c55e;font-weight:700">✓</span>
-                  <span class="cat-badge cat-relevance">relevance</span> Summary should indicate the goal is not actionable
-                </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Keyword 'portfolio' found</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('T002')">
-            <td><code>T002</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Reduce concentration should propose at least one SELL trade</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.8s</td>
-          </tr>
-          <tbody id="checks-T002" style="display:none">
-              <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('T003')">
-            <td><code>T003</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">AI Feedback mode must produce a portfolio health review</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.3s</td>
-          </tr>
-          <tbody id="checks-T003" style="display:none">
-              <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('T004')">
-            <td><code>T004</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Goal to buy more of a specific stock should produce a BUY trade</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.3s</td>
-          </tr>
-          <tbody id="checks-T004" style="display:none">
-              <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('T005')">
-            <td><code>T005</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Full rebalance request should produce multiple trades</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.3s</td>
-          </tr>
-          <tbody id="checks-T005" style="display:none">
-              <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('T006')">
-            <td><code>T006</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">'Sell everything' should be blocked as too risky with an explanation</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.3s</td>
-          </tr>
-          <tbody id="checks-T006" style="display:none">
-              <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('T007')">
-            <td><code>T007</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Analyst must use live prices — risk auditor rejects hallucinated prices</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.3s</td>
-          </tr>
-          <tbody id="checks-T007" style="display:none">
-              <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('T008')">
-            <td><code>T008</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Large idle cash position must be flagged before any equity recommendation</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.3s</td>
-          </tr>
-          <tbody id="checks-T008" style="display:none">
-              <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('T009')">
-            <td><code>T009</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Goal mentioning an unsupported ticker must not produce a trade for it</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.3s</td>
-          </tr>
-          <tbody id="checks-T009" style="display:none">
-              <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('T010')">
-            <td><code>T010</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Sell quantity exceeding current holdings must be blocked or corrected</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.3s</td>
-          </tr>
-          <tbody id="checks-T010" style="display:none">
-              <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('T011')">
-            <td><code>T011</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Single-ticker query should produce a focused analysis on that ticker only</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.5s</td>
-          </tr>
-          <tbody id="checks-T011" style="display:none">
-              <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('T012')">
-            <td><code>T012</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Request for cash balance only should produce no trades</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.4s</td>
-          </tr>
-          <tbody id="checks-T012" style="display:none">
-              <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('T013')">
-            <td><code>T013</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Explicit BUY request for a named ticker should produce a trade for that exact ticker</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.3s</td>
-          </tr>
-          <tbody id="checks-T013" style="display:none">
-              <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('T014')">
-            <td><code>T014</code></td>
-            <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Off-topic macro question (RBI rate) should be rejected as out of scope</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">0%</td>
-            <td style="color:#34d399">20%</td>
-            <td>0</td>
-            <td>0 / 0.0s</td>
-          </tr>
-          <tbody id="checks-T014" style="display:none">
-              <tr class="check-row">
-                <td colspan="2" style="padding-left:2rem">
-                  <span style="color:#22c55e;font-weight:700">✓</span>
-                  <span class="cat-badge cat-guardrail">guardrail</span> Response must propose 0 trades
-                </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">0 trades — guardrail held</td>
-              </tr>
-              <tr class="check-row">
-                <td colspan="2" style="padding-left:2rem">
-                  <span style="color:#22c55e;font-weight:700">✓</span>
-                  <span class="cat-badge cat-relevance">relevance</span> Summary must decline and explain scope is portfolio management only
-                </td>
-                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Keyword 'only' found</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('T015')">
-            <td><code>T015</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Comprehensive risk review must reference every held position</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.3s</td>
-          </tr>
-          <tbody id="checks-T015" style="display:none">
-              <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('T016')">
-            <td><code>T016</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Sector diversification analysis must identify sectors from actual holdings</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.4s</td>
-          </tr>
-          <tbody id="checks-T016" style="display:none">
-              <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('T017')">
-            <td><code>T017</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Identifying the worst performer requires fetching prices for all holdings</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.3s</td>
-          </tr>
-          <tbody id="checks-T017" style="display:none">
-              <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('T018')">
-            <td><code>T018</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Requesting 5 trades at once must be reduced to ≤3 and eventually approved</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.3s</td>
-          </tr>
-          <tbody id="checks-T018" style="display:none">
-              <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('T019')">
-            <td><code>T019</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">User-stated price that differs from live price must be ignored</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.3s</td>
-          </tr>
-          <tbody id="checks-T019" style="display:none">
-              <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('T020')">
-            <td><code>T020</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Request for a price forecast must be declined as out of scope</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.3s</td>
-          </tr>
-          <tbody id="checks-T020" style="display:none">
-              <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
           <tr class="test-row" onclick="toggleChecks('A001')">
             <td><code>A001</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
+            <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
             <td style="max-width:300px;font-size:0.85rem">get_portfolio must be called before any get_live_price call</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.3s</td>
+            <td style="color:#60a5fa">0%</td>
+            <td style="color:#a78bfa">100%</td>
+            <td style="color:#34d399">100%</td>
+            <td>4</td>
+            <td>1 / 15.1s</td>
           </tr>
           <tbody id="checks-A001" style="display:none">
               <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('A002')">
-            <td><code>A002</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Off-topic request must trigger zero tool calls</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.3s</td>
-          </tr>
-          <tbody id="checks-A002" style="display:none">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_portfolio' must be called
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">'get_portfolio' found in log</td>
+              </tr>
               <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('A003')">
-            <td><code>A003</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">WIPRO-only goal must fetch WIPRO price and no unrequested tickers</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.3s</td>
-          </tr>
-          <tbody id="checks-A003" style="display:none">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> get_portfolio must be called before get_live_price
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">portfolio order=0, first price order=1</td>
+              </tr>
               <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('A004')">
-            <td><code>A004</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Full portfolio review must call get_live_price for all 3 held tickers</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.4s</td>
-          </tr>
-          <tbody id="checks-A004" style="display:none">
-              <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('A005')">
-            <td><code>A005</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">record_trade tool must never be called during analysis</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.3s</td>
-          </tr>
-          <tbody id="checks-A005" style="display:none">
-              <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_live_price' must be called
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">'get_live_price' found in log</td>
               </tr></tbody>
           <tr class="test-row" onclick="toggleChecks('A006')">
             <td><code>A006</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
+            <td><span class="badge" style="background:#ef444420;color:#ef4444;border:1px solid #ef444440">FAIL</span></td>
             <td style="max-width:300px;font-size:0.85rem">Tool call count must stay within a reasonable bound (≤ 15 total)</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.4s</td>
+            <td style="color:#60a5fa">33%</td>
+            <td style="color:#a78bfa">67%</td>
+            <td style="color:#34d399">100%</td>
+            <td>2</td>
+            <td>1 / 17.2s</td>
           </tr>
           <tbody id="checks-A006" style="display:none">
               <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('A007')">
-            <td><code>A007</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Over-aggressive plan must be rejected once then converge on retry</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.3s</td>
-          </tr>
-          <tbody id="checks-A007" style="display:none">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> Total tool calls must be in [2, 15]
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">2 tool call(s) (allowed [2, 15])</td>
+              </tr>
               <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('A008')">
-            <td><code>A008</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Unsupported ticker plan exhausts retries and ends with risk_approved=False</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.3s</td>
-          </tr>
-          <tbody id="checks-A008" style="display:none">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_portfolio' must be called
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">'get_portfolio' found in log</td>
+              </tr>
               <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#ef4444;font-weight:700">✗</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_live_price' must be called
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Tools called: ['get_portfolio', 'get_prices_batch']</td>
               </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('A009')">
-            <td><code>A009</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Conservative valid plan must be approved in a single auditor pass</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.3s</td>
+          <tr class="test-row" onclick="toggleChecks('A021')">
+            <td><code>A021</code></td>
+            <td><span class="badge" style="background:#22c55e20;color:#22c55e;border:1px solid #22c55e40">PASS</span></td>
+            <td style="max-width:300px;font-size:0.85rem">Targeted single-ticker query must use get_live_price, not get_prices_batch</td>
+            <td style="color:#60a5fa">0%</td>
+            <td style="color:#a78bfa">100%</td>
+            <td style="color:#34d399">80%</td>
+            <td>2</td>
+            <td>1 / 10.0s</td>
           </tr>
-          <tbody id="checks-A009" style="display:none">
+          <tbody id="checks-A021" style="display:none">
               <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('A010')">
-            <td><code>A010</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Feedback mode health check must complete within 2 auditor passes</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.4s</td>
-          </tr>
-          <tbody id="checks-A010" style="display:none">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_portfolio' must be called
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">'get_portfolio' found in log</td>
+              </tr>
               <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('A011')">
-            <td><code>A011</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">All proposed trade prices must be within 2% of fetched live price</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.3s</td>
-          </tr>
-          <tbody id="checks-A011" style="display:none">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> Tool 'get_live_price' must be called
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">'get_live_price' found in log</td>
+              </tr>
               <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('A012')">
-            <td><code>A012</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Proposed trades must only reference tickers for which price was fetched</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.6s</td>
-          </tr>
-          <tbody id="checks-A012" style="display:none">
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-tool_call">tool_call</span> get_prices_batch must NOT be called for targeted queries
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">get_prices_batch absent — correct for targeted query</td>
+              </tr>
               <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('A013')">
-            <td><code>A013</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">TCS-only sell query must mention TCS in summary (precision)</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.3s</td>
-          </tr>
-          <tbody id="checks-A013" style="display:none">
-              <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('A014')">
-            <td><code>A014</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Sector review must mention all held tickers in summary (recall)</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.3s</td>
-          </tr>
-          <tbody id="checks-A014" style="display:none">
-              <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
-              </tr></tbody>
-          <tr class="test-row" onclick="toggleChecks('A015')">
-            <td><code>A015</code></td>
-            <td><span class="badge" style="background:#f59e0b20;color:#f59e0b;border:1px solid #f59e0b40">ERROR</span></td>
-            <td style="max-width:300px;font-size:0.85rem">Cash observation goal must produce a relevant, on-topic summary</td>
-            <td style="color:#60a5fa">N/A</td>
-            <td style="color:#a78bfa">N/A</td>
-            <td style="color:#34d399">N/A</td>
-            <td>0</td>
-            <td>0 / 0.4s</td>
-          </tr>
-          <tbody id="checks-A015" style="display:none">
-              <tr class="check-row">
-                <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: HTTP 500: Internal Server Error</td>
+                <td colspan="2" style="padding-left:2rem">
+                  <span style="color:#22c55e;font-weight:700">✓</span>
+                  <span class="cat-badge cat-relevance">relevance</span> Summary must mention one of: ['aapl', 'apple']
+                </td>
+                <td colspan="6" style="color:#94a3b8;font-size:0.8rem">Keyword 'aapl' found</td>
               </tr></tbody>
       </tbody>
     </table>
@@ -695,8 +286,8 @@
 </div>
 
 <script>
-const radarRaw  = {"labels": ["Guardrail", "Tool Call", "Retry", "Grounding", "Faithfulness", "Precision", "Recall", "Relevance"], "values": [100, 0, 0, 0, 0, 0, 0, 20]};
-const barRaw    = {"labels": ["T001", "T002", "T003", "T004", "T005", "T006", "T007", "T008", "T009", "T010", "T011", "T012", "T013", "T014", "T015", "T016", "T017", "T018", "T019", "T020", "A001", "A002", "A003", "A004", "A005", "A006", "A007", "A008", "A009", "A010", "A011", "A012", "A013", "A014", "A015"], "colours": ["#22c55e", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b", "#22c55e", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b", "#f59e0b"], "values": [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]};
+const radarRaw  = {"labels": ["Guardrail", "Tool Call", "Retry", "Grounding", "Faithfulness", "Precision", "Recall", "Relevance"], "values": [0, 89, 0, 0, 0, 11, 89, 93]};
+const barRaw    = {"labels": ["A001", "A006", "A021"], "colours": ["#22c55e", "#ef4444", "#22c55e"], "values": [1, 0, 1]};
 
 // ── Radar chart ──────────────────────────────────────────────────────────────
 new Chart(document.getElementById("radarChart"), {
