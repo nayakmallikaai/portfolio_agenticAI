@@ -327,7 +327,7 @@
 
   function fmt(n) {
     if (n == null) return "—";
-    return "₹" + Number(n).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+    return "$" + Number(n).toLocaleString("en-US", { maximumFractionDigits: 2 });
   }
   function genSessionId() { return "sess_" + Math.random().toString(36).slice(2, 10); }
   function setStatus(id, html) { document.getElementById(id).innerHTML = html; }

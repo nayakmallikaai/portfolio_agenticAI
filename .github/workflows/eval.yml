@@ -1,8 +1,18 @@
 name: Eval Suite
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: "Test suite to run"
+        required: true
+        default: "all"
+        type: choice
+        options: [all, agent, original]
+      test_ids:
+        description: "Specific test IDs (space-separated, e.g. A001 T003) — leave blank for all"
+        required: false
+        default: ""
 
 jobs:
   eval:
@@ -62,10 +72,16 @@ jobs:
         id: eval
         run: |
           set -o pipefail
+          EXTRA_ARGS=""
+          if [ -n "${{ github.event.inputs.test_ids }}" ]; then
+            EXTRA_ARGS="--ids ${{ github.event.inputs.test_ids }}"
+          fi
           python -m eval.run_agent_eval \
             --url http://localhost:8000 \
             --user eval_user \
+            --suite ${{ github.event.inputs.suite }} \
             --out eval/report.html \
+            $EXTRA_ARGS \
             2>&1 | tee /tmp/eval_output.txt
         continue-on-error: true
 

@@ -15,7 +15,7 @@ spec:
       containers:
         - name: portfolio-app
           # setup.sh replaces the placeholder below with the real ECR URL
-          image: 921772462914.dkr.ecr.ap-south-1.amazonaws.com/portfolio-app:latest
+          image: 921772462914.dkr.ecr.ap-south-1.amazonaws.com/portfolio-app:f65439b
           ports:
             - containerPort: 8000
           env:
