@@ -503,6 +503,117 @@ Full node-by-node trace: analyst reasoning, tool calls, risk auditor decisions, 
 
 ## TODO
 
-- **Memory-based responses** — persist per-user conversation history using LangGraph `MemorySaver` or a vector store so the analyst can reference prior recommendations over time
-- **RAGAS evaluation** — add faithfulness and answer-relevance metrics to replace keyword-based summary checks with semantic scoring
-- **Synthetic portfolio dataset** — expand the eval suite with a larger range of portfolio compositions to stress-test risk auditor decision quality
+# Portfolio Agent — Engineering-Focused AI System
+
+A production-oriented multi-agent system for equity portfolio analysis and controlled trade execution.This project is designed to showcase **applied AI systems engineering**, not financial modeling.
+> **Core question:**  
+> How do you safely integrate non-deterministic LLMs into workflows that require strict control and correctness?
+## 🧠 Problem
+LLMs are powerful but unreliable in isolation:
+- They hallucinate
+- They ignore constraints
+- They cannot be trusted with irreversible actions
+In financial workflows:
+  > We want intelligent suggestions, but we cannot allow autonomous execution.
+---
+## ⚖️ Design Goals
+
+- **Safety over autonomy**  
+  No trade can execute without explicit human approval
+
+- **Structured reasoning**  
+  Outputs must be machine-validated, not just text
+
+- **Controlled LLM usage**  
+  LLMs propose decisions, systems enforce them
+
+- **Production realism**  
+  Includes latency, retries, cost, and deployment constraints
+
+---
+
+## 🏗️ System Overview
+
+The system separates responsibilities:
+
+- **Analyst (LLM)** → proposes trades using real data  
+- **Risk Auditor (LLM)** → enforces constraints  
+- **API Layer (deterministic)** → controls execution  
+- **Human** → final decision-maker  
+
+> **Principle:** LLMs suggest. Systems decide. Humans approve.
+
+---
+## 🔁 Agent Workflow
+
+1. Analyst proposes trades based on portfolio + live prices  
+2. Risk auditor validates:
+   - position sizing
+   - invalid trades
+   - hallucinated prices  
+3. If rejected:
+   - feedback injected
+   - analyst retries (max 3 rounds)  
+4. Approved trades returned to user  
+5. User explicitly approves execution  
+
+---## ⚖️ Why Multi-Agent?
+
+### Single-agent baseline
+- Faster (~6–7s)
+- Lower cost
+- Weak guardrail enforcement
+
+### Multi-agent system
+- Slower (~10s)
+- Higher cost
+- Strong constraint enforcement
+
+### Decision
+
+Chose multi-agent for **correctness-critical workflows**, accepting latency overhead.
+
+
+## 🧠 Engineering Insights
+
+- Token reduction has **diminishing returns beyond ~1.2k**
+- Retry loops impact latency more than prompt size
+- Multi-agent design adds ~30–40% overhead
+- Reliability comes from **structure, not prompting**
+
+## ⚠️ Known Limitations
+
+- ~10s latency due to sequential flow  
+- Evaluation may not generalize fully  
+- No correlation / advanced financial modeling  
+- Retry loop increases cost in edge cases  
+
+---
+
+## 🔍 Tradeoffs
+
+| Decision | Benefit | Cost |
+|--------|--------|------|
+| Multi-agent | Strong safety | Higher latency |
+| Retry loop | Better accuracy | Slower responses |
+| Live pricing | Realistic decisions | External overhead |
+| Human approval | Safe execution | Less automation |
+
+---
+
+## 🚫 Not in Scope
+
+- Real trading integration (regulatory complexity)
+- Advanced financial modeling
+- Fully autonomous execution
+
+---
+
+## 🔮 Future Work
+
+- Hybrid routing (skip auditor for low-risk cases)
+- Adversarial eval suite
+- Cost-aware execution paths
+- Memory for longitudinal reasoning
+
+---
