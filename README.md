@@ -1,170 +1,110 @@
 # Portfolio Agent
 
-A production-grade multi-agent AI system for equity portfolio management. An LLM analyst proposes trades grounded in live market data, a risk auditor enforces hard guardrails, and a human approves or rejects before anything touches the portfolio.
+A production-oriented multi-agent system for equity portfolio analysis and controlled trade execution.This project is designed to showcase **applied AI systems engineering**, not financial modeling.
+> **Core question:**  
+> How do you safely integrate non-deterministic LLMs into workflows that require strict control and correctness?
+## 🧠 Problem
+LLMs are powerful but unreliable in isolation:
+- They hallucinate
+- They ignore constraints
+- They cannot be trusted with irreversible actions
+In financial workflows:
+  > We want intelligent suggestions, but we cannot allow autonomous execution.
 
-The LLM **cannot execute a trade on its own** — `record_trade` is hidden from the agent and only callable via explicit user approval through `/api/execute`. This is enforced architecturally, not by prompt instruction.
-
+Hence a multi-agent AI portfolio management which has an  An LLM analyst proposes trades grounded in live market data, a risk auditor enforces hard guardrails, and a human approves or rejects before anything touches the portfolio.
 ---
 
 ## System Architecture
 
-```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                           Browser UI                                     │
-│                  Portfolio view · Goal input · Trade approval            │
-└─────────────────────────────────┬────────────────────────────────────────┘
-                                  │ HTTP
-                                  ▼
-┌──────────────────────────────────────────────────────────────────────────┐
-│                          FastAPI  (main.py)                              │
-│                                                                          │
-│   POST /api/analyze          POST /api/execute      GET /api/portfolio   │
-└──────────────┬───────────────────────┬─────────────────────┬────────────┘
-               │                       │                     │
-               ▼                       │                     ▼
-┌─────────────────────────────┐        │           ┌─────────────────────┐
-│   LangGraph Workflow        │        │           │     PostgreSQL       │
-│   (agent/graph.py)          │        │           │                     │
-│                             │        │           │  users              │
-│  ┌───────────────────────┐  │        │           │  portfolios         │
-│  │     Analyst Node      │  │        │           │  analysis_sessions  │
-│  │   claude-sonnet-4-6   │  │        │           │  trade_history      │
-│  │                       │  │        │           └─────────────────────┘
-│  │  tool filtering:      │  │        │
-│  │  · targeted → single  │  │        │
-│  │  · holistic → batch   │  │        │
-│  └──────────┬────────────┘  │        │
-│             │ tool calls    │        │
-│             ▼               │        │
-│  ┌───────────────────────┐  │        │
-│  │      Tool Node        │  │        │
-│  │    (MCP client)       │  │        │
-│  └──────────┬────────────┘  │        │
-│             │ stdio         │        │
-│             ▼               │        │
-│  ┌───────────────────────┐  │        │
-│  │     MCP Server        │◄─┼────────┘  record_trade: only via
-│  │    (subprocess)       │  │           /api/execute after user
-│  │                       │  │           approval — never exposed
-│  │  get_portfolio        │  │           to the LLM
-│  │  get_live_price       │  │
-│  │  get_prices_batch     │  │
-│  │  record_trade  🔒     │  │
-│  └──────────┬────────────┘  │
-│             │               │
-│             ▼               │
-│  ┌───────────────────────┐  │
-│  │    Risk Auditor Node  │  │
-│  │   claude-haiku-4-5    │  │
-│  │                       │  │
-│  │  APPROVED ──────────────►│──► trades shown to user
-│  │  REJECTED → feedback  │  │
-│  │    injected → retry   │  │
-│  │    (max 3 rounds)     │  │
-│  └───────────────────────┘  │
-└─────────────────────────────┘
-```
+The system separates responsibilities:
+
+- **Analyst (LLM)** → proposes trades using real data  
+- **Risk Auditor (LLM)** → enforces constraints  
+- **API Layer (deterministic)** → controls execution  
+- **Human** → final decision-maker
+
+                                        ```
+                                        ┌──────────────────────────────────────────────────────────────────────────┐
+                                        │                           Browser UI                                     │
+                                        │                  Portfolio view · Goal input · Trade approval            │
+                                        └─────────────────────────────────┬────────────────────────────────────────┘
+                                                                          │ HTTP
+                                                                          ▼
+                                        ┌──────────────────────────────────────────────────────────────────────────┐
+                                        │                          FastAPI  (main.py)                              │
+                                        │                                                                          │
+                                        │   POST /api/analyze          POST /api/execute      GET /api/portfolio   │
+                                        └──────────────┬───────────────────────┬─────────────────────┬────────────┘
+                                                       │                       │                     │
+                                                       ▼                       │                     ▼
+                                        ┌─────────────────────────────┐        │           ┌─────────────────────┐
+                                        │   LangGraph Workflow        │        │           │     PostgreSQL       │
+                                        │   (agent/graph.py)          │        │           │                     │
+                                        │                             │        │           │  users              │
+                                        │  ┌───────────────────────┐  │        │           │  portfolios         │
+                                        │  │     Analyst Node      │  │        │           │  analysis_sessions  │
+                                        │  │   claude-sonnet-4-6   │  │        │           │  trade_history      │
+                                        │  │                       │  │        │           └─────────────────────┘
+                                        │  │  tool filtering:      │  │        │
+                                        │  │  · targeted → single  │  │        │
+                                        │  │  · holistic → batch   │  │        │
+                                        │  └──────────┬────────────┘  │        │
+                                        │             │ tool calls    │        │
+                                        │             ▼               │        │
+                                        │  ┌───────────────────────┐  │        │
+                                        │  │      Tool Node        │  │        │
+                                        │  │    (MCP client)       │  │        │
+                                        │  └──────────┬────────────┘  │        │
+                                        │             │ stdio         │        │
+                                        │             ▼               │        │
+                                        │  ┌───────────────────────┐  │        │
+                                        │  │     MCP Server        │◄─┼────────┘  record_trade: only via
+                                        │  │    (subprocess)       │  │           /api/execute after user
+                                        │  │                       │  │           approval — never exposed
+                                        │  │  get_portfolio        │  │           to the LLM
+                                        │  │  get_live_price       │  │
+                                        │  │  get_prices_batch     │  │
+                                        │  │  record_trade  🔒     │  │
+                                        │  └──────────┬────────────┘  │
+                                        │             │               │
+                                        │             ▼               │
+                                        │  ┌───────────────────────┐  │
+                                        │  │    Risk Auditor Node  │  │
+                                        │  │   claude-haiku-4-5    │  │
+                                        │  │                       │  │
+                                        │  │  APPROVED ──────────────►│──► trades shown to user
+                                        │  │  REJECTED → feedback  │  │
+                                        │  │    injected → retry   │  │
+                                        │  │    (max 3 rounds)     │  │
+                                        │  └───────────────────────┘  │
+                                        └─────────────────────────────┘
+                                        ```
 
 ### Agent Workflow (inside LangGraph)
 
-```
-User goal / mode
-      │
-      ▼
- [Analyst Node] ──── needs data? ────► [Tool Node] ──► MCP Server
-      │                                                 (get_portfolio,
-      │ no tools needed                                  get_prices)
-      ▼                                      │
- [Risk Auditor Node] ◄──────────────────────┘
-      │
-      ├── APPROVED ──► proposed trades returned to API
-      │                user sees them in UI
-      │                user clicks Approve/Reject
-      │                      │
-      │                      ▼
-      │               POST /api/execute
-      │               MCP record_trade fires
-      │               portfolio updated in DB
-      │
-      └── REJECTED ──► feedback injected into analyst context
-                        analyst retries with revised plan
-                        (max 3 attempts, then returns rejection)
-```
-
----
-
-## Deployment Architecture
-
-```
-Developer Machine
-      │
-      │  ./deployment_scripts/deploy.sh
-      │
-      ├─[1] docker buildx build (linux/amd64)
-      │       image tagged with git SHA
-      │
-      ├─[2] docker push ──────────────────────────────────► AWS ECR
-      │       <account>.dkr.ecr.ap-south-1.amazonaws.com       │
-      │                                                         │
-      ├─[3] aws eks update-kubeconfig                          │
-      │                                                         │
-      ├─[4] kubectl apply (db-migrate Job) ◄────── pulls image ┘
-      │       runs: python -c "from db.engine import migrate_db; migrate_db()"
-      │       ttlSecondsAfterFinished: 120 (auto-cleans)
-      │       kubectl wait --for=condition=complete (blocks until done)
-      │
-      ├─[5] kubectl apply app-deployment.yaml
-      │       rolling restart — old pods stay up until new pods are Ready
-      │
-      ├─[6] kubectl rollout status (waits for Ready)
-      │
-      └─[7] curl smoke test on LoadBalancer URL
-```
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                   AWS  (ap-south-1)                              │
-│                                                                  │
-│   ┌──────────────────────────────────────────────────────────┐  │
-│   │                  EKS Cluster: portfolio-cluster           │  │
-│   │                                                          │  │
-│   │   ┌──────────────────────────┐  ┌───────────────────┐   │  │
-│   │   │  db-migrate (k8s Job)    │  │  portfolio-app    │   │  │
-│   │   │  runs before app rollout │  │  Deployment       │   │  │
-│   │   │  ttl: 120s auto-delete   │  │  replicas: 1      │   │  │
-│   │   └──────────────────────────┘  │  port: 8000       │   │  │
-│   │                                 │                   │   │  │
-│   │                                 │  readinessProbe   │   │  │
-│   │                                 │  livenessProbe    │   │  │
-│   │                                 │  cpu: 0.5–1 core  │   │  │
-│   │                                 │  mem: 512Mi–1Gi   │   │  │
-│   │                                 └────────┬──────────┘   │  │
-│   │                                          │              │  │
-│   │   ┌──────────────────────────┐           │              │  │
-│   │   │ postgres-secret          │           │              │  │
-│   │   │ app-secret               │◄──────────┘ (env inject) │  │
-│   │   │ (K8s Secrets)            │                          │  │
-│   │   └──────────────────────────┘                          │  │
-│   │                                                          │  │
-│   │   ┌──────────────────────────┐  ┌───────────────────┐   │  │
-│   │   │ portfolio-app-service    │  │  PostgreSQL Pod    │   │  │
-│   │   │ type: LoadBalancer       │  │  (in-cluster)      │   │  │
-│   │   │ port 80 → 8000           │  └───────────────────┘   │  │
-│   │   └──────────────────────────┘                          │  │
-│   └──────────────────────────────────────────────────────────┘  │
-│                                                                  │
-│   ┌──────────────────────────────────────────────────────────┐  │
-│   │  ECR: portfolio-app:<git-sha>                            │  │
-│   └──────────────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────────────┘
-         ▲
-         │ AWS ELB  (HTTP, port 80)
-         │
-     Internet / User Browser
-```
-
----
-
+                          ```
+                          User goal / mode
+                                │
+                                ▼
+                           [Analyst Node] ──── needs data? ────► [Tool Node] ──► MCP Server
+                                │                                                 (get_portfolio,
+                                │ no tools needed                                  get_prices)
+                                ▼                                      │
+                           [Risk Auditor Node] ◄──────────────────────┘
+                                │
+                                ├── APPROVED ──► proposed trades returned to API
+                                │                user sees them in UI
+                                │                user clicks Approve/Reject
+                                │                      │
+                                │                      ▼
+                                │               POST /api/execute
+                                │               MCP record_trade fires
+                                │               portfolio updated in DB
+                                │
+                                └── REJECTED ──► feedback injected into analyst context
+                                                  analyst retries with revised plan
+                                                  (max 3 attempts, then returns rejection)
+                          ```
 ## What It Does
 
 - Fetches live prices via yfinance (falls back to previous close when markets are closed)
@@ -416,8 +356,80 @@ Current score: **25/25 (100%)**
 
 ---
 
-## Deployment (EKS)
+## Deployment Architecture
 
+The app is hosted on AWS, running on EKS (Elastic Kubernetes Service). We chose EKS because it gives us managed Kubernetes — handling pod scheduling, health checks, and rolling deployments   
+without managing the underlying infrastructure. The FastAPI app, MCP server subprocess, and PostgreSQL all run as pods on the cluster, with the MCP server communicating with the agent over stdio within the same pod. LangGraph orchestrates the multi-agent workflow inside the app pod, managing the state machine transitions between the Analyst, Tool Node, and Risk Auditor.   
+
+```
+Developer Machine
+      │
+      │  ./deployment_scripts/deploy.sh
+      │
+      ├─[1] docker buildx build (linux/amd64)
+      │       image tagged with git SHA
+      │
+      ├─[2] docker push ──────────────────────────────────► AWS ECR
+      │       <account>.dkr.ecr.ap-south-1.amazonaws.com       │
+      │                                                         │
+      ├─[3] aws eks update-kubeconfig                          │
+      │                                                         │
+      ├─[4] kubectl apply (db-migrate Job) ◄────── pulls image ┘
+      │       runs: python -c "from db.engine import migrate_db; migrate_db()"
+      │       ttlSecondsAfterFinished: 120 (auto-cleans)
+      │       kubectl wait --for=condition=complete (blocks until done)
+      │
+      ├─[5] kubectl apply app-deployment.yaml
+      │       rolling restart — old pods stay up until new pods are Ready
+      │
+      ├─[6] kubectl rollout status (waits for Ready)
+      │
+      └─[7] curl smoke test on LoadBalancer URL
+```
+
+                                    ```
+                                    ┌──────────────────────────────────────────────────────────────────┐
+                                    │                   AWS  (ap-south-1)                              │
+                                    │                                                                  │
+                                    │   ┌──────────────────────────────────────────────────────────┐  │
+                                    │   │                  EKS Cluster: portfolio-cluster           │  │
+                                    │   │                                                          │  │
+                                    │   │   ┌──────────────────────────┐  ┌───────────────────┐   │  │
+                                    │   │   │  db-migrate (k8s Job)    │  │  portfolio-app    │   │  │
+                                    │   │   │  runs before app rollout │  │  Deployment       │   │  │
+                                    │   │   │  ttl: 120s auto-delete   │  │  replicas: 1      │   │  │
+                                    │   │   └──────────────────────────┘  │  port: 8000       │   │  │
+                                    │   │                                 │                   │   │  │
+                                    │   │                                 │  readinessProbe   │   │  │
+                                    │   │                                 │  livenessProbe    │   │  │
+                                    │   │                                 │  cpu: 0.5–1 core  │   │  │
+                                    │   │                                 │  mem: 512Mi–1Gi   │   │  │
+                                    │   │                                 └────────┬──────────┘   │  │
+                                    │   │                                          │              │  │
+                                    │   │   ┌──────────────────────────┐           │              │  │
+                                    │   │   │ postgres-secret          │           │              │  │
+                                    │   │   │ app-secret               │◄──────────┘ (env inject) │  │
+                                    │   │   │ (K8s Secrets)            │                          │  │
+                                    │   │   └──────────────────────────┘                          │  │
+                                    │   │                                                          │  │
+                                    │   │   ┌──────────────────────────┐  ┌───────────────────┐   │  │
+                                    │   │   │ portfolio-app-service    │  │  PostgreSQL Pod    │   │  │
+                                    │   │   │ type: LoadBalancer       │  │  (in-cluster)      │   │  │
+                                    │   │   │ port 80 → 8000           │  └───────────────────┘   │  │
+                                    │   │   └──────────────────────────┘                          │  │
+                                    │   └──────────────────────────────────────────────────────────┘  │
+                                    │                                                                  │
+                                    │   ┌──────────────────────────────────────────────────────────┐  │
+                                    │   │  ECR: portfolio-app:<git-sha>                            │  │
+                                    │   └──────────────────────────────────────────────────────────┘  │
+                                    └──────────────────────────────────────────────────────────────────┘
+                                             ▲
+                                             │ AWS ELB  (HTTP, port 80)
+                                             │
+                                         Internet / User Browser
+                                    ```
+
+---
 ### Prerequisites
 
 - AWS CLI configured (`aws sts get-caller-identity` works)
@@ -501,79 +513,6 @@ Full node-by-node trace: analyst reasoning, tool calls, risk auditor decisions, 
 
 ---
 
-## TODO
-
-# Portfolio Agent — Engineering-Focused AI System
-
-A production-oriented multi-agent system for equity portfolio analysis and controlled trade execution.This project is designed to showcase **applied AI systems engineering**, not financial modeling.
-> **Core question:**  
-> How do you safely integrate non-deterministic LLMs into workflows that require strict control and correctness?
-## 🧠 Problem
-LLMs are powerful but unreliable in isolation:
-- They hallucinate
-- They ignore constraints
-- They cannot be trusted with irreversible actions
-In financial workflows:
-  > We want intelligent suggestions, but we cannot allow autonomous execution.
----
-## ⚖️ Design Goals
-
-- **Safety over autonomy**  
-  No trade can execute without explicit human approval
-
-- **Structured reasoning**  
-  Outputs must be machine-validated, not just text
-
-- **Controlled LLM usage**  
-  LLMs propose decisions, systems enforce them
-
-- **Production realism**  
-  Includes latency, retries, cost, and deployment constraints
-
----
-
-## 🏗️ System Overview
-
-The system separates responsibilities:
-
-- **Analyst (LLM)** → proposes trades using real data  
-- **Risk Auditor (LLM)** → enforces constraints  
-- **API Layer (deterministic)** → controls execution  
-- **Human** → final decision-maker  
-
-> **Principle:** LLMs suggest. Systems decide. Humans approve.
-
----
-## 🔁 Agent Workflow
-
-1. Analyst proposes trades based on portfolio + live prices  
-2. Risk auditor validates:
-   - position sizing
-   - invalid trades
-   - hallucinated prices  
-3. If rejected:
-   - feedback injected
-   - analyst retries (max 3 rounds)  
-4. Approved trades returned to user  
-5. User explicitly approves execution  
-
----## ⚖️ Why Multi-Agent?
-
-### Single-agent baseline
-- Faster (~6–7s)
-- Lower cost
-- Weak guardrail enforcement
-
-### Multi-agent system
-- Slower (~10s)
-- Higher cost
-- Strong constraint enforcement
-
-### Decision
-
-Chose multi-agent for **correctness-critical workflows**, accepting latency overhead.
-
-
 ## 🧠 Engineering Insights
 
 - Token reduction has **diminishing returns beyond ~1.2k**
@@ -583,7 +522,7 @@ Chose multi-agent for **correctness-critical workflows**, accepting latency over
 
 ## ⚠️ Known Limitations
 
-- ~10s latency due to sequential flow  
+- ~9s latency due to sequential flow  
 - Evaluation may not generalize fully  
 - No correlation / advanced financial modeling  
 - Retry loop increases cost in edge cases  
