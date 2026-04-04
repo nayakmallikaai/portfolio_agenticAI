@@ -233,6 +233,28 @@ class BatchTickerCount:
             self.description = f"get_prices_batch must be called with >= {self.min_tickers} tickers"
 
 
+# ── Hallucination checks ─────────────────────────────────────────────────────
+
+@dataclass
+class NoHallucinatedTickers:
+    """
+    Assert the decision_summary does not mention any ticker that is NOT in the
+    user's portfolio (as reflected by the tool_calls_log get_portfolio result)
+    AND was not fetched via a price tool.
+
+    portfolio_tickers: the known holdings for this user. Any ticker in the
+    summary that is absent from this list AND was not fetched is a hallucination.
+    """
+    portfolio_tickers: List[str]
+    description: str = ""
+    def __post_init__(self):
+        if not self.description:
+            self.description = (
+                f"Summary must not mention tickers outside the portfolio "
+                f"{self.portfolio_tickers} unless their price was fetched"
+            )
+
+
 # ── Trade count checks ────────────────────────────────────────────────────────
 
 @dataclass

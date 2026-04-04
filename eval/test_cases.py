@@ -84,6 +84,7 @@ class TestCase:
     request: dict                   # body for POST /api/analyze
     checks: List                    # list of Check objects
     notes: str = ""
+    user_id: Optional[str] = None   # if set, overrides the CLI --user for this case
 
 
 # ── Dataset ───────────────────────────────────────────────────────────────────

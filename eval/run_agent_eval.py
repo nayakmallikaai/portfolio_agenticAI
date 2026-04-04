@@ -153,10 +153,10 @@ def main():
         suite_label = "Portfolio Agent — Original Test Suite (T001–T020)"
     elif args.suite == "agent":
         cases = AGENT_TEST_CASES
-        suite_label = "Portfolio Agent — Agent Capability Suite (A001–A015)"
+        suite_label = "Portfolio Agent — Agent Capability Suite (A001–A021 + B001–B009)"
     else:
         cases = TEST_CASES + AGENT_TEST_CASES
-        suite_label = "Portfolio Agent — Full Evaluation Suite (T001–T020 + A001–A015)"
+        suite_label = "Portfolio Agent — Full Evaluation Suite (T001–T020 + A001–A021 + B001–B009)"
 
     print(f"\n{BOLD}Running: {suite_label}{RESET}")
     print(f"  URL  : {args.url}")

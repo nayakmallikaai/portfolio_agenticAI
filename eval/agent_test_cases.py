@@ -23,6 +23,7 @@ from eval.agent_checks import (
     PriceGrounded,
     ContextPrecision, ContextRecall, AnswerRelevance, Faithfulness,
     GetPricesBatchCalled, GetPricesBatchNotCalled, BatchTickerCount,
+    NoHallucinatedTickers,
     TradeCountAtMost,
 )
 
@@ -509,6 +510,269 @@ AGENT_TEST_CASES: List[TestCase] = [
             "Tool routing — narrow single-ticker query triggers targeted mode (not holistic). "
             "get_prices_batch is hidden and get_live_price is available. "
             "Verifies the routing logic correctly identifies non-holistic intent."
+        ),
+    ),
+
+    # ── Beta user profile tests (B001–B008) ───────────────────────────────────
+    # Each case targets a specific user with a distinct portfolio profile.
+    # Users must be pre-seeded in the DB before running these cases.
+
+    # B001 — beta_user1: $5k cash + 10 AAPL @ $226. Cash-deploy goal.
+    TestCase(
+        id="B001",
+        description="Cash-heavy single-stock user: suggest 1 BUY to diversify (beta_user1)",
+        user_id="beta_user1",
+        request={
+            "mode": "goal",
+            "goal": (
+                "Fetch my portfolio. I have idle cash sitting around. "
+                "Suggest one stock to buy to start diversifying across sectors."
+            ),
+        },
+        checks=[
+            ToolWasCalled("get_portfolio"),
+            GetPricesBatchCalled(),
+            ShouldHaveTrades(min_trades=1),
+            RiskApproved(expected=True),
+            SummaryContains(keywords=["cash", "aapl", "apple", "diversif", "sector"]),
+        ],
+        notes=(
+            "beta_user1: 10 AAPL + $5k cash. Cash is ~66% of total portfolio — "
+            "triggers cash drag warning. Analyst should fetch prices holistically "
+            "(contains 'diversifying'), propose 1 BUY from a non-tech sector. "
+            "Risk auditor should approve since $5k cash comfortably covers a small buy."
+        ),
+    ),
+
+    # B002 — beta_user2: 5 MSFT @ $435 (underwater), 20 VZ @ $42, 15 KO @ $60, $3k cash.
+    TestCase(
+        id="B002",
+        description="All-underwater portfolio: worst performer identified by return% (beta_user2)",
+        user_id="beta_user2",
+        request={
+            "mode": "goal",
+            "goal": (
+                "Fetch my portfolio and live prices. "
+                "Show me the gain or loss for each position and identify my worst performing stock."
+            ),
+        },
+        checks=[
+            ToolWasCalled("get_portfolio"),
+            GetPricesBatchCalled(),
+            RiskApproved(expected=True),
+            SummaryContains(keywords=["msft", "microsoft", "loss", "worst", "%", "return"]),
+            AnswerRelevance(
+                keywords=["gain", "loss", "return", "percent", "%", "worst", "performing"],
+                min_keywords=2,
+            ),
+        ],
+        notes=(
+            "beta_user2: MSFT @ $435 (live ~$373 → -14%), VZ @ $42 (live ~$49 → +17%), "
+            "KO @ $60 (live ~$76 → +27%). MSFT is the worst performer by return%. "
+            "Analyst must compute return% for each holding and correctly identify MSFT. "
+            "Goal is informational — no trades required, risk_approved=True with 0 trades is valid."
+        ),
+    ),
+
+    # B003 — beta_user3: 40 AAPL @ $185, 25 AMZN @ $178, 15 NVDA @ $495, $75k cash.
+    TestCase(
+        id="B003",
+        description="Cash-bloated FAANG portfolio: cash drag and tech concentration flagged (beta_user3)",
+        user_id="beta_user3",
+        request={
+            "mode": "goal",
+            "goal": (
+                "Review my portfolio. I have large cash reserves and mostly tech holdings. "
+                "Is my cash allocation appropriate? Flag any concentration risks."
+            ),
+        },
+        checks=[
+            ToolWasCalled("get_portfolio"),
+            GetPricesBatchCalled(),
+            RiskApproved(expected=True),
+            SummaryContains(keywords=["cash", "tech", "concentrat", "sector", "drag", "idle"]),
+            AnswerRelevance(
+                keywords=["cash", "tech", "concentration", "sector", "diversif", "allocation"],
+                min_keywords=2,
+            ),
+        ],
+        notes=(
+            "beta_user3: $75k cash + AAPL/AMZN/NVDA all deeply in-the-money. "
+            "Cash is roughly 50%+ of total portfolio — cash drag threshold. "
+            "All 3 holdings are technology sector — sector concentration >60%. "
+            "Analyst must surface both issues. Goal is a review; no trade is required "
+            "if analyst explains the problems clearly (no_trade_reason=analyst_no_trade)."
+        ),
+    ),
+
+    # B004 — beta_user4: 50 JPM @ $195, 5 GS @ $410, $2k cash. Heavy financials concentration.
+    TestCase(
+        id="B004",
+        description="Single-sector financials concentration: analyst proposes diversifying BUY (beta_user4)",
+        user_id="beta_user4",
+        request={
+            "mode": "goal",
+            "goal": (
+                "Fetch my portfolio and prices. "
+                "Analyse my concentration risk and suggest one trade to diversify across sectors."
+            ),
+        },
+        checks=[
+            ToolWasCalled("get_portfolio"),
+            GetPricesBatchCalled(),
+            ShouldHaveTrades(min_trades=1),
+            RiskApproved(expected=True),
+            SummaryContains(keywords=["jpm", "jpmorgan", "concentrat", "financial", "sector", "diversif"]),
+        ],
+        notes=(
+            "beta_user4: JPM is 90%+ of equity (50 shares × ~$295). GS is a minor position. "
+            "Both are financials — 100% single-sector. Analyst must flag concentration, "
+            "propose 1 BUY from a non-financial sector (e.g. healthcare, consumer, tech). "
+            "$2k cash constrains the buy size — analyst must respect available cash."
+        ),
+    ),
+
+    # B005 — beta_user5: 10 NVDA @ $950, 20 BA @ $220, 25 DIS @ $115, $1.5k cash.
+    TestCase(
+        id="B005",
+        description="All positions underwater: gain/loss computed per holding (beta_user5)",
+        user_id="beta_user5",
+        request={
+            "mode": "goal",
+            "goal": (
+                "Fetch my portfolio and live prices. "
+                "Compute my total gain or loss in dollars and percentage for each holding."
+            ),
+        },
+        checks=[
+            ToolWasCalled("get_portfolio"),
+            GetPricesBatchCalled(),
+            RiskApproved(expected=True),
+            SummaryContains(keywords=["nvda", "ba", "boeing", "dis", "disney", "loss", "%"]),
+            AnswerRelevance(
+                keywords=["gain", "loss", "dollar", "$", "percent", "%", "return"],
+                min_keywords=2,
+            ),
+            RetryCountAtMost(n=2),
+        ],
+        notes=(
+            "beta_user5: NVDA @ $950 (live ~$900 → -5%), BA @ $220 (live ~$175 → -20%), "
+            "DIS @ $115 (live ~$90 → -22%). All three positions are in the red. "
+            "Analyst must show $ gain/loss AND % for each. Goal is informational. "
+            "No trade needed — analyst should explain losses and propose nothing unless "
+            "there is a strong case for a stop-loss sell."
+        ),
+    ),
+
+    # B006 — beta_user6: 8 MSFT, 10 JPM, 12 JNJ, 15 CVX, $4k cash. Healthy 4-sector portfolio.
+    TestCase(
+        id="B006",
+        description="Well-diversified healthy portfolio: AI feedback must propose zero trades (beta_user6)",
+        user_id="beta_user6",
+        request={
+            "mode": "feedback",
+        },
+        checks=[
+            ToolWasCalled("get_portfolio"),
+            GetPricesBatchCalled(),
+            RiskApproved(expected=True),
+            ShouldReject(),   # 0 trades — portfolio is healthy
+            SummaryContains(keywords=["health", "balanced", "diversif", "sector", "no trade", "well"]),
+            RetryCountAtMost(n=2),
+        ],
+        notes=(
+            "beta_user6: MSFT (tech), JPM (financials), JNJ (healthcare), CVX (energy) — "
+            "4 sectors, no single stock >40% equity, cash ~15% of total. "
+            "This is the 'healthy portfolio' control case. Feedback mode health check "
+            "must conclude the portfolio is in good shape and propose 0 trades. "
+            "Any trade suggestion here is a false positive."
+        ),
+    ),
+
+    # B007 — beta_user7: $50k cash, zero holdings.
+    TestCase(
+        id="B007",
+        description="100% cash portfolio: analyst flags cash drag and proposes 2 sector-diversified BUYs (beta_user7)",
+        user_id="beta_user7",
+        request={
+            "mode": "goal",
+            "goal": (
+                "Fetch my portfolio. All my money is in cash. "
+                "Suggest 2 stocks to invest in from different sectors."
+            ),
+        },
+        checks=[
+            ToolWasCalled("get_portfolio"),
+            GetPricesBatchCalled(),
+            ShouldHaveTrades(min_trades=1),
+            RiskApproved(expected=True),
+            TradeCountAtMost(max_trades=3),
+            SummaryContains(keywords=["cash", "invest", "sector", "buy", "deploy"]),
+        ],
+        notes=(
+            "beta_user7: $50k cash, no holdings. Cash drag is 100% — maximum severity. "
+            "Analyst must suggest 2 BUYs from different sectors. $50k gives ample room "
+            "so the risk auditor should approve. TradeCountAtMost(3) ensures the analyst "
+            "doesn't over-propose — goal asked for 2, not 10."
+        ),
+    ),
+
+    # B009 — beta_user5: BA, DIS, NVDA all underwater. Analyst must not hallucinate
+    # tickers from other sessions (e.g. MSFT) into the summary.
+    TestCase(
+        id="B009",
+        description="Analyst must not hallucinate tickers absent from portfolio into summary (beta_user5)",
+        user_id="beta_user5",
+        request={
+            "mode": "goal",
+            "goal": (
+                "Fetch my portfolio and live prices. "
+                "All my stocks are at a loss. Should I sell the worst performer?"
+            ),
+        },
+        checks=[
+            ToolWasCalled("get_portfolio"),
+            GetPricesBatchCalled(),
+            NoHallucinatedTickers(portfolio_tickers=["NVDA", "BA", "DIS"]),
+            RiskApproved(expected=True),
+            SummaryContains(keywords=["nvda", "ba", "boeing", "dis", "disney", "loss"]),
+        ],
+        notes=(
+            "Hallucination guard — beta_user5 holds only NVDA, BA, DIS. "
+            "A known failure mode is the analyst referencing tickers from other users' "
+            "sessions (e.g. MSFT, AAPL, JPM) that bleed in via stale risk_feedback state. "
+            "NoHallucinatedTickers checks that no DJI ticker outside {NVDA, BA, DIS} "
+            "appears in the summary unless its price was explicitly fetched for this session."
+        ),
+    ),
+
+    # B008 — beta_user8: 6 DJI stocks (AAPL, MSFT, UNH, GS, CAT, WMT), $3k cash.
+    TestCase(
+        id="B008",
+        description="Large diversified portfolio: full rebalance uses 30-ticker batch (beta_user8)",
+        user_id="beta_user8",
+        request={
+            "mode": "goal",
+            "goal": (
+                "Fetch my portfolio and rebalance across all 30 Dow Jones stocks. "
+                "Propose up to 3 incremental trades to improve diversification."
+            ),
+        },
+        checks=[
+            ToolWasCalled("get_portfolio"),
+            GetPricesBatchCalled(),
+            BatchTickerCount(min_tickers=30),
+            TradeCountAtMost(max_trades=5),
+            RiskApproved(expected=True),
+            RetryCountAtMost(n=3),
+        ],
+        notes=(
+            "beta_user8: AAPL+MSFT (tech), UNH (healthcare), GS (financials), "
+            "CAT (industrials), WMT (retail) — 5 sectors, reasonably balanced. "
+            "Full rebalance mode fires (contains 'rebalance across all 30 Dow Jones'). "
+            "Analyst must call get_prices_batch with all 30 tickers. "
+            "With good existing diversification, the plan should be conservative "
+            "(≤3 trades) and approved first or second pass."
         ),
     ),
 ]

@@ -38,6 +38,7 @@ from eval.agent_checks import (
     PriceGrounded,
     ContextPrecision, ContextRecall, AnswerRelevance, Faithfulness,
     GetPricesBatchCalled, GetPricesBatchNotCalled, BatchTickerCount,
+    NoHallucinatedTickers,
     TradeCountAtMost,
 )
 
@@ -73,6 +74,7 @@ class CaseResult:
     price_grounding: Optional[float] = None
     tool_calls_count: int = 0
     retry_count: int = 0
+    user_id: Optional[str] = None
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -394,6 +396,28 @@ def _evaluate_check(check: Any, response: dict) -> CheckResult:
             "tool_call",
         )
 
+    # ── Hallucination check ───────────────────────────────────────────────────
+    if isinstance(check, NoHallucinatedTickers):
+        allowed = {t.upper() for t in check.portfolio_tickers}
+        allowed |= {t.upper() for t in tickers_fetched}
+        # DJI 30 tickers that might appear in the summary
+        all_dji = {
+            "AAPL","MSFT","AMZN","IBM","CSCO","CRM","NVDA","JPM","GS","AXP",
+            "V","TRV","JNJ","MRK","UNH","AMGN","BA","CAT","HON","MMM","CVX",
+            "KO","WMT","MCD","PG","NKE","DIS","VZ","HD","SHW",
+        }
+        hallucinated = [
+            t for t in all_dji
+            if t not in allowed and t.lower() in summary
+        ]
+        passed = len(hallucinated) == 0
+        return CheckResult(
+            check.description, passed,
+            "No hallucinated tickers found" if passed
+            else f"Hallucinated tickers in summary: {hallucinated}",
+            "faithfulness",
+        )
+
     # ── Trade count check ─────────────────────────────────────────────────────
     if isinstance(check, TradeCountAtMost):
         n = len(trades)
@@ -411,7 +435,8 @@ def _evaluate_check(check: Any, response: dict) -> CheckResult:
 
 def run_test(case: TestCase, base_url: str, user_id: str) -> CaseResult:
     session_id = "eval_" + uuid.uuid4().hex[:8]
-    payload = {"user_id": user_id, "session_id": session_id, **case.request}
+    effective_user = case.user_id or user_id
+    payload = {"user_id": effective_user, "session_id": session_id, **case.request}
 
     start = time.time()
     try:
@@ -481,6 +506,7 @@ def run_test(case: TestCase, base_url: str, user_id: str) -> CaseResult:
         price_grounding=None,   # populated per-check above; aggregate computed in compute_metrics
         tool_calls_count=len(log),
         retry_count=response.get("retry_count", 0),
+        user_id=effective_user,
     )
 
 

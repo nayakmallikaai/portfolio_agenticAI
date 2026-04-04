@@ -153,11 +153,15 @@ def _build_test_rows(results: List[CaseResult]) -> str:
                 <td colspan="8" style="padding-left:2rem;color:#f59e0b">ERROR: {r.error}</td>
               </tr>"""
 
+        user_badge = (
+            f'<span style="font-size:0.72rem;color:#64748b;margin-left:6px">({r.user_id})</span>'
+            if getattr(r, "user_id", None) else ""
+        )
         rows.append(f"""
           <tr class="test-row" onclick="toggleChecks('{r.test_id}')">
             <td><code>{r.test_id}</code></td>
             <td>{score_badge}</td>
-            <td style="max-width:300px;font-size:0.85rem">{r.description}</td>
+            <td style="max-width:300px;font-size:0.85rem">{r.description}{user_badge}</td>
             <td style="color:#60a5fa">{cp}</td>
             <td style="color:#a78bfa">{cr}</td>
             <td style="color:#34d399">{ar}</td>
