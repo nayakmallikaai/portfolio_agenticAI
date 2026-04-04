@@ -127,6 +127,9 @@ def record_trade(user_id: str, session_id: str, ticker: str, side: str, qty: int
     db = SessionLocal()
     try:
         result = crud.record_trade(db, session_id, user_id, ticker, side, qty, price)
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
     return json.dumps(result)

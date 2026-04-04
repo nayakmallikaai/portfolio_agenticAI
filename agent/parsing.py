@@ -16,15 +16,25 @@ def parse_proposed_trades(text: str) -> Tuple[List[Dict], bool]:
         r'(\{\s*"trades"\s*:\s*\[.*?\]\s*\})',
     ]
     for pattern in patterns:
-        match = re.search(pattern, text, re.DOTALL)
-        if match:
+        matches = re.findall(pattern, text, re.DOTALL)
+        if not matches:
+            continue
+        # Prefer the last non-empty trades block; fall back to last block overall
+        last_block = None
+        last_nonempty = None
+        for raw in matches:
             try:
-                data = json.loads(match.group(1))
+                data = json.loads(raw)
                 trades = data.get("trades", [])
-                print(f"[PARSE] Found trades block with {len(trades)} trade(s) via regex.")
-                return trades, True
+                last_block = trades
+                if trades:
+                    last_nonempty = trades
             except json.JSONDecodeError:
                 continue
+        if last_block is not None:
+            result = last_nonempty if last_nonempty is not None else last_block
+            print(f"[PARSE] Found trades block with {len(result)} trade(s) via regex.")
+            return result, True
     return [], False
 
 

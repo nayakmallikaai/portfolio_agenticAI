@@ -213,9 +213,8 @@ async def execute(req: ExecuteRequest):
         if session_data.executed:
             raise HTTPException(status_code=400, detail="Trades already executed for this session.")
 
-        crud.mark_session_executed(db, req.session_id)
-
         if not req.approved:
+            crud.mark_session_executed(db, req.session_id)
             crud.reject_proposed_trades(db, req.session_id)
             return {
                 "status": "rejected",
@@ -234,7 +233,10 @@ async def execute(req: ExecuteRequest):
                 "get_live_price",
                 {"ticker": trade["ticker"], "user_id": req.user_id},
             )
-            live_price = float(price_result.content[0].text)
+            raw_price = price_result.content[0].text
+            if raw_price.startswith("ERROR"):
+                raise HTTPException(status_code=502, detail=f"Price unavailable for {trade['ticker']}: {raw_price}")
+            live_price = float(raw_price)
             print(f"[EXECUTE] {trade['ticker']} live price: ${live_price}")
 
             result = await mcp_session.call_tool(
@@ -249,6 +251,11 @@ async def execute(req: ExecuteRequest):
                 },
             )
             result_data = json.loads(result.content[0].text)
+            if result_data.get("status") == "ERROR":
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Trade failed for {trade['ticker']}: {result_data.get('reason', 'Unknown error')}",
+                )
             trade_results.append({
                 "trade_id": result_data.get("trade_id"),
                 "ticker": trade["ticker"],
@@ -260,7 +267,16 @@ async def execute(req: ExecuteRequest):
                 "status": result_data.get("status"),
             })
 
-        updated_portfolio = crud.get_portfolio(db, req.user_id)
+        # Mark session executed only after ALL trades complete successfully
+        crud.mark_session_executed(db, req.session_id)
+
+        # Open a fresh session so we read the portfolio AFTER MCP commits are visible
+        fresh_db = SessionLocal()
+        try:
+            updated_portfolio = crud.get_portfolio(fresh_db, req.user_id)
+        finally:
+            fresh_db.close()
+
         return {
             "status": "executed",
             "trade_results": trade_results,
