@@ -342,7 +342,7 @@ Returns current holdings with live prices, P&L per position, and total portfolio
 ### Running the Eval Suite
 
 ```bash
-# Run all 25 tests
+# Run all 45 tests
 python -m eval.run_eval
 
 # Run specific tests
@@ -352,7 +352,7 @@ python -m eval.run_eval --ids T001 T007 T019
 python -m eval.run_eval --out eval/results.json
 ```
 
-Current score: **25/25 (100%)**
+Current score: **35/45 **
 
 ---
 
