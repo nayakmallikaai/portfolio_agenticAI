@@ -556,3 +556,128 @@ Full node-by-node trace: analyst reasoning, tool calls, risk auditor decisions, 
 - Memory for longitudinal reasoning
 
 ---
+
+## 🗺️ Visual Architecture Diagram
+
+### Full System Architecture
+
+```mermaid
+flowchart TB
+    classDef ui      fill:#2471a3,stroke:#1a5276,color:#fff
+    classDef api     fill:#1e8449,stroke:#145a32,color:#fff
+    classDef llm     fill:#d35400,stroke:#9a3e00,color:#fff
+    classDef risk    fill:#a93226,stroke:#7b241c,color:#fff
+    classDef tool    fill:#148f77,stroke:#0e6655,color:#fff
+    classDef db      fill:#1a5276,stroke:#0a2a4a,color:#fff
+    classDef ext     fill:#5d6d7e,stroke:#2e4057,color:#fff
+    classDef lock    fill:#641e16,stroke:#4a1510,color:#fff
+    classDef infra   fill:#784212,stroke:#5a3200,color:#fff
+
+    Browser(["🖥️  Browser UI\nstatic/index.html\nPortfolio · Goals · Trade Approval"]):::ui
+
+    subgraph API_LAYER ["⚡ FastAPI  —  main.py + api/"]
+        direction LR
+        Analyze["POST /api/analyze"]:::api
+        Execute["POST /api/execute\n⚠️ human approval gate"]:::api
+        PortEP["GET /api/portfolio/{id}"]:::api
+    end
+
+    subgraph AGENT_LAYER ["🧠 LangGraph Workflow  —  agent/graph.py"]
+        direction TB
+        Analyst["🤖 Analyst Node\nclaude-sonnet-4-6  ·  temp=0\n─────────────────────────\ntargeted  → get_live_price\nholistic  → get_prices_batch\nrecord_trade never exposed"]:::llm
+        ToolNode["⚙️ Tool Node  (MCP client)\nstdio transport\nuser_id injected deterministically\nresult stored in graph state"]:::tool
+        Auditor["🛡️ Risk Auditor\nclaude-haiku-4-5  ·  temp=0\n─────────────────────────\nprice deviation  < 2%\ntrade count      ≤ 3\nno oversell  ·  ticker whitelist\nrejects hallucinated claims"]:::risk
+
+        Analyst -->|"has tool_calls"| ToolNode
+        ToolNode -->|"portfolio_snapshot\n+ live_prices in state"| Analyst
+        Analyst -->|"no tool_calls"| Auditor
+        Auditor -->|"REJECTED + specific feedback\nmax 3 retry rounds"| Analyst
+    end
+
+    subgraph MCP_LAYER ["🔧 MCP Server subprocess  —  tools/market_server_mcp.py"]
+        direction LR
+        GetPort["get_portfolio"]:::tool
+        GetPrice["get_live_price\ntargeted mode"]:::tool
+        GetBatch["get_prices_batch\nholistic / rebalance"]:::tool
+        RecordTrade["🔒  record_trade\nhidden from LLM\nhuman-only trigger"]:::lock
+    end
+
+    DB[("🗄️ PostgreSQL\nusers\nportfolios\nanalysis_sessions\ntrade_history")]:::db
+    YF(["📈 yfinance\nlive prices\nprev-close fallback"]):::ext
+    LS(["🔍 LangSmith\nnode traces · tool calls\ntoken usage · retries"]):::ext
+
+    subgraph INFRA ["☁️  AWS  ap-south-1"]
+        ECR["ECR\ncontainer registry\ngit-SHA image tags"]:::infra
+        DBJob["k8s Job  db-migrate\nruns before rollout\nttl 120 s  ·  auto-delete"]:::infra
+        EKS["EKS  portfolio-cluster\nrolling deploy · HPA\nreadiness + liveness probes"]:::infra
+        ECR -->|"image pull"| EKS
+        DBJob -->|"schema migrations"| DB
+    end
+
+    Browser       -->|"HTTP"| API_LAYER
+    Analyze       -->|"invoke workflow"| AGENT_LAYER
+    PortEP        -->|"query"| DB
+    AGENT_LAYER   -->|"tool calls  via stdio"| MCP_LAYER
+    GetPort       -->|"SELECT"| DB
+    GetPrice      -->|"fetch"| YF
+    GetBatch      -->|"fetch"| YF
+    Execute       -->|"only after human approves"| RecordTrade
+    RecordTrade   -->|"UPDATE portfolios\nINSERT trade_history"| DB
+    Auditor       -.->|"APPROVED → return proposed trades"| Analyze
+    AGENT_LAYER   -.->|"async telemetry"| LS
+    EKS           -->|"hosts"| API_LAYER
+```
+
+---
+
+### Agent Retry Loop Detail
+
+```mermaid
+flowchart LR
+    classDef llm   fill:#d35400,stroke:#9a3e00,color:#fff
+    classDef risk  fill:#a93226,stroke:#7b241c,color:#fff
+    classDef tool  fill:#148f77,stroke:#0e6655,color:#fff
+    classDef gate  fill:#1e8449,stroke:#145a32,color:#fff
+    classDef user  fill:#2471a3,stroke:#1a5276,color:#fff
+    classDef db    fill:#1a5276,stroke:#0a2a4a,color:#fff
+
+    Goal(["User Goal\nor mode=feedback"]):::user
+
+    AN["🤖 Analyst Node\nclaude-sonnet-4-6"]:::llm
+    TN["⚙️ Tool Node\nget_portfolio\nget_live_price\nget_prices_batch"]:::tool
+    RN["🛡️ Risk Auditor\nclaude-haiku-4-5"]:::risk
+    UI(["UI shows\nproposed trades"]):::user
+    HGate{"Human\nApprove?"}:::gate
+    Exec["POST /api/execute\nfetch fresh price\nrecord_trade"]:::gate
+    Reject["Mark trades\naccepted=false\nno DB change"]:::gate
+    DB[("PostgreSQL\nportfolio updated")]:::db
+
+    Goal        --> AN
+    AN          -->|"needs data"| TN
+    TN          -->|"data in state"| AN
+    AN          -->|"proposal ready"| RN
+    RN          -->|"APPROVED"| UI
+    RN          -->|"REJECTED\nfeedback injected\nretry ≤ 3"| AN
+    UI          --> HGate
+    HGate       -->|"✅ Yes"| Exec
+    HGate       -->|"❌ No"| Reject
+    Exec        --> DB
+```
+
+---
+
+### Color Legend
+
+| Color | Layer |
+|---|---|
+| 🔵 Blue | Browser UI |
+| 🟢 Green | FastAPI / API layer |
+| 🟠 Orange | LLM — Analyst (Sonnet 4.6) |
+| 🔴 Red | LLM — Risk Auditor (Haiku 4.5) |
+| 🩵 Teal | MCP Tools / Tool Node |
+| 🟤 Dark brown | AWS Infrastructure |
+| ⚫ Dark red | Locked tool (record\_trade) |
+| 🫙 Dark blue | PostgreSQL |
+| 🔘 Gray | External services (yfinance, LangSmith) |
+
+---
